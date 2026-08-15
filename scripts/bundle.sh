@@ -49,6 +49,8 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 DshDesktop contributors. Released under the MIT License.</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSHighResolutionCapable</key>

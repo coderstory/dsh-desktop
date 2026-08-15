@@ -79,7 +79,27 @@ struct DshApp: App {
             // App menu (About + Quit)
             CommandGroup(replacing: .appInfo) {
                 Button("About DshDesktop") {
-                    NSApp.orderFrontStandardAboutPanel(nil)
+                    let body = NSMutableAttributedString()
+                    body.append(NSAttributedString(
+                        string: "\nA native macOS wrapper for dsh.\n\n",
+                        attributes: [.font: NSFont.systemFont(ofSize: 11)]
+                    ))
+                    body.append(NSAttributedString(
+                        string: "View on GitHub →",
+                        attributes: [
+                            .font: NSFont.systemFont(ofSize: 11),
+                            .link: URL(string: "https://github.com/deepseek-ai/deepseek-harness")!,
+                            .foregroundColor: NSColor.controlAccentColor
+                        ]
+                    ))
+                    body.append(NSAttributedString(
+                        string: "\n\nReleased under the MIT License.\n",
+                        attributes: [
+                            .font: NSFont.systemFont(ofSize: 10),
+                            .foregroundColor: NSColor.secondaryLabelColor
+                        ]
+                    ))
+                    NSApp.orderFrontStandardAboutPanel(options: [.credits: body])
                 }
             }
             CommandGroup(replacing: .appTermination) {
