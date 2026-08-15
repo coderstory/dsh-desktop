@@ -7,14 +7,14 @@ struct DshApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     /// CLI-parsed launch configuration. Read once at App init.
-    private static let launchConfig = LaunchConfig.current
+    private static let launchConfig = LaunchConfig.current()
 
     /// Resolved dsh location, populated during init. `nil` in `--no-spawn` mode
     /// (we don't manage dsh) or if init() bailed out before getting here.
     private static var dshLocation: DshLocator.Location?
 
     init() {
-        Log.app.info("DshDesktop starting; port=\(Self.launchConfig.port) noSpawn=\(Self.launchConfig.noSpawn) debug=\(Self.launchConfig.debug)")
+        Log.app.info("DshDesktop starting; port=\(Self.launchConfig.resolvedPort) noSpawn=\(Self.launchConfig.noSpawn) debug=\(Self.launchConfig.debug)")
         if Self.launchConfig.help {
             print(LaunchConfig.helpText)
             exit(0)
@@ -47,7 +47,7 @@ struct DshApp: App {
             return DshProcess(
                 executable: URL(fileURLWithPath: "/bin/true"),
                 arguments: [],
-                port: cfg.port,
+                port: cfg.resolvedPort,
                 ownsChild: false
             )
         }
@@ -57,7 +57,7 @@ struct DshApp: App {
         let executable = location.map { URL(fileURLWithPath: $0.executablePath) }
             ?? URL(fileURLWithPath: "/bin/false")
         let arguments = location?.arguments ?? ["dsh"]
-        return DshProcess(executable: executable, arguments: arguments, port: cfg.port)
+        return DshProcess(executable: executable, arguments: arguments, port: cfg.resolvedPort)
     }()
 
     var body: some Scene {
@@ -145,6 +145,11 @@ struct DshApp: App {
                 }
             }
         }
+
+        // Settings scene — opens via Cmd+, (standard macOS shortcut).
+        Settings {
+            PreferencesView(prefs: Preferences.shared)
+        }
     }
 }
 
@@ -196,9 +201,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func quitApp() {
-        Task { [weak self] in
-            await self?.process?.stop()
-            await MainActor.run { NSApp.terminate(nil) }
+        let proc = process
+        Task { @MainActor in
+            await proc?.stop()
+            NSApp.terminate(nil)
         }
     }
 

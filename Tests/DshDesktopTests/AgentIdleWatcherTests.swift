@@ -135,14 +135,21 @@ struct AgentIdleWatcherTests {
 
     @Test func replaceEvaluator_wiresNewClosure() async throws {
         let (watcher, _, _) = makeWatcher(initialBusy: false)
-        var newBusy = false
-        watcher.replaceEvaluator { newBusy }
+        let flag = MutableFlag(false)
+        watcher.replaceEvaluator { flag.value }
         watcher.start()
         try await Task.sleep(for: .milliseconds(80))
         #expect(watcher.state == .idle)
-        newBusy = true
+        flag.value = true
         try await Task.sleep(for: .milliseconds(80))
         #expect(watcher.state == .busy)
         watcher.stop()
     }
+}
+
+/// Reference-typed wrapper for mutable Bool used across closure boundaries;
+/// avoids Swift 6 data-race warnings on captured `var`s.
+private final class MutableFlag: @unchecked Sendable {
+    var value: Bool
+    init(_ v: Bool) { self.value = v }
 }

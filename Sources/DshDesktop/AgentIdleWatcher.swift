@@ -17,22 +17,28 @@ public final class AgentIdleWatcher: ObservableObject {
 
     public typealias Evaluator = @MainActor () async -> Bool
 
-    private let pollInterval: TimeInterval
+    /// Settable at runtime — changes take effect on the next `runLoop` tick.
+    /// Source of truth is `Preferences.shared.pollingIntervalSeconds`.
+    public var pollInterval: TimeInterval
+
     private let cooldown: TimeInterval
     private var evaluator: Evaluator
     private let notify: (String, String) async -> Void
+    private let isNotificationsEnabled: () -> Bool
     private var task: Task<Void, Never>?
 
     public init(
         pollInterval: TimeInterval = 5.0,
         cooldown: TimeInterval = 3.0,
         evaluator: @escaping Evaluator,
-        notify: @escaping (String, String) async -> Void = Notifications.notify
+        notify: @escaping (String, String) async -> Void = Notifications.notify,
+        isNotificationsEnabled: @escaping () -> Bool = { Preferences.shared.notificationsEnabled }
     ) {
         self.pollInterval = pollInterval
         self.cooldown = cooldown
         self.evaluator = evaluator
         self.notify = notify
+        self.isNotificationsEnabled = isNotificationsEnabled
     }
 
     public func start() {
@@ -78,6 +84,10 @@ public final class AgentIdleWatcher: ObservableObject {
            Date().timeIntervalSince(last) < cooldown {
             return
         }
+
+        // Gate on user preference — toggling notifications off prevents
+        // any new banners without affecting the cooldown clock.
+        guard isNotificationsEnabled() else { return }
 
         lastNotifiedAt = Date()
         await notify(

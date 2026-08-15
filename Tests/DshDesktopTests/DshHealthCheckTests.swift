@@ -40,7 +40,7 @@ struct DshHealthCheckTests {
 
 /// Minimal HTTP test server used only by the test target.
 /// Binds an ephemeral port via Network.framework and replies with a configurable status.
-final class TestHTTPServer {
+final class TestHTTPServer: @unchecked Sendable {
     let port: UInt16
     private let listener: NWListener
     private var connections: [NWConnection] = []

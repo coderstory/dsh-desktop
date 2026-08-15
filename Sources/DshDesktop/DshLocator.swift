@@ -12,7 +12,7 @@ public enum DshLocator {
 
     /// Mockable `which`-style function. Returns the absolute path to a binary
     /// on `$PATH`, or nil if not found.
-    public typealias WhichFunc = (String) -> String?
+    public typealias WhichFunc = @Sendable (String) -> String?
 
     /// Default implementation: spawn `/usr/bin/env which dsh` and parse stdout.
     public static let whichDefault: WhichFunc = { name in

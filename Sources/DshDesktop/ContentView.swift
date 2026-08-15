@@ -7,9 +7,15 @@ struct ContentView: View {
     @StateObject var process: DshProcess
     @State private var webReady: Bool = false
     @State private var overlayHidden: Bool = false
+    @StateObject private var prefs = Preferences.shared
     @StateObject private var idleWatcher: AgentIdleWatcher = {
         // Placeholder evaluator; replaced in onWebViewReady once WKWebView exists.
-        AgentIdleWatcher(evaluator: { false })
+        let prefs = Preferences.shared
+        return AgentIdleWatcher(
+            pollInterval: prefs.pollingIntervalSeconds,
+            evaluator: { false },
+            isNotificationsEnabled: { prefs.notificationsEnabled }
+        )
     }()
 
     private var webURL: URL { URL(string: "http://127.0.0.1:\(process.port)/")! }
@@ -42,11 +48,16 @@ struct ContentView: View {
             await startFlow()
             _ = await Notifications.requestAuthorization()
         }
-        .onChange(of: process.state) { newState in
+        .onChange(of: process.state) { _, newState in
             handleStateChange(newState)
         }
         .onDisappear {
             idleWatcher.stop()
+        }
+        // Hot-reload from Preferences: when user changes polling interval in
+        // Settings, push it to the running watcher; the next tick uses it.
+        .onChange(of: prefs.pollingIntervalSeconds) { _, newValue in
+            idleWatcher.pollInterval = newValue
         }
     }
 

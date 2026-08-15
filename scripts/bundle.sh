@@ -52,7 +52,7 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 DshDesktop contributors. Released under the MIT License.</string>
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>25.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSUIElement</key>
