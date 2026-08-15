@@ -15,6 +15,15 @@ struct DSHWebView: NSViewRepresentable {
         let wv = WKWebView(frame: .zero, configuration: config)
         wv.allowsBackForwardNavigationGestures = false
         wv.load(URLRequest(url: url))
+        // Listen for reload notifications (posted by File ▸ Reload).
+        // Hop to MainActor for the reload call — Swift 6 strict-concurrency safety.
+        NotificationCenter.default.addObserver(
+            forName: .dshReload, object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in
+                wv.reload()
+            }
+        }
         return wv
     }
 

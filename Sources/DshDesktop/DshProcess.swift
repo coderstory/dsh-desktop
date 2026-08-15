@@ -21,7 +21,7 @@ public final class DshProcess: ObservableObject {
 
     private let executable: URL
     private let arguments: [String]
-    private let port: Int
+    public let port: Int
     private var process: Process?
     private var stderrPipe: Pipe?
     private let stderrCap = 64 * 1024  // 64 KiB
