@@ -58,3 +58,7 @@
 "Save a snapshot of the wrapper's state for debugging." = "保存当前状态快照以便排查问题。";
 "Diagnostic report saved" = "诊断报告已保存";
 "Failed to save diagnostic report" = "保存诊断报告失败";
+
+/* Single-instance guard */
+"DshDesktop is already running" = "DshDesktop 已在运行";
+"Another instance of DshDesktop is already running. The existing window has been brought to the foreground." = "DshDesktop 另一个实例已在运行。已将其窗口置于前台。";

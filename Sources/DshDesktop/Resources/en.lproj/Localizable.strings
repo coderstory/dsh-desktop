@@ -58,3 +58,7 @@
 "Save a snapshot of the wrapper's state for debugging." = "Save a snapshot of the wrapper's state for debugging.";
 "Diagnostic report saved" = "Diagnostic report saved";
 "Failed to save diagnostic report" = "Failed to save diagnostic report";
+
+/* Single-instance guard */
+"DshDesktop is already running" = "DshDesktop is already running";
+"Another instance of DshDesktop is already running. The existing window has been brought to the foreground." = "Another instance of DshDesktop is already running. The existing window has been brought to the foreground.";

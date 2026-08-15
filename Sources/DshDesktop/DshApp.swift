@@ -19,6 +19,7 @@ struct DshApp: App {
             print(LaunchConfig.helpText)
             exit(0)
         }
+        Self.enforceSingleInstance()
         if !Self.launchConfig.noSpawn {
             // Locate dsh before showing any UI so a missing install gets a
             // friendly alert instead of a cryptic Process.run() error.
@@ -28,6 +29,25 @@ struct DshApp: App {
                 Self.showAlertAndExit(title: "dsh not found", message: error.localizedDescription)
             }
         }
+    }
+
+    /// Detect an already-running instance of DshDesktop via NSRunningApplication.
+    /// If found, focus it and exit; otherwise, we're the canonical instance.
+    /// Skipped under `--no-spawn` only when the user explicitly opts in via
+    /// `--allow-multiple` (not yet implemented); for now, single instance is
+    /// always enforced.
+    private static func enforceSingleInstance() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "ai.deepseek.dsh.desktop"
+        let myPID = ProcessInfo.processInfo.processIdentifier
+        let others = NSRunningApplication.runningApplications(
+            withBundleIdentifier: bundleID
+        ).filter { $0.processIdentifier != myPID }
+        guard let existing = others.first else { return }
+        Log.app.notice("Another instance already running (pid=\(existing.processIdentifier)); focusing it and quitting")
+        existing.activate(options: [.activateAllWindows])
+        // Give the existing instance a moment to come forward, then exit.
+        Thread.sleep(forTimeInterval: 0.3)
+        exit(0)
     }
 
     private static func showAlertAndExit(title: String, message: String) -> Never {
