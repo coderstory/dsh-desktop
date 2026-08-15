@@ -17,7 +17,9 @@
 "Server" = "Server";
 "Notifications" = "Notifications";
 "Polling" = "Polling";
+"Diagnostics" = "Diagnostics";
 "Pause polling when window is hidden" = "Pause polling when window is hidden";
+"Enable browser performance monitor" = "Enable browser performance monitor";
 "Port" = "Port";
 "Apply" = "Apply";
 "Reset to Defaults" = "Reset to Defaults";

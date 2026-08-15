@@ -17,7 +17,9 @@
 "Server" = "服务器";
 "Notifications" = "通知";
 "Polling" = "轮询";
+"Diagnostics" = "诊断";
 "Pause polling when window is hidden" = "窗口隐藏时暂停轮询";
+"Enable browser performance monitor" = "启用浏览器性能监控";
 "Port" = "端口";
 "Apply" = "应用";
 "Reset to Defaults" = "恢复默认";

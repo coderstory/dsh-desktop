@@ -24,6 +24,14 @@ struct ContentView: View {
                     }
                     idleWatcher.reset()
                     idleWatcher.start()
+
+                    // Also attach the WKWebView to the (optional) performance
+                    // monitor. The monitor is enabled via Preferences and polls
+                    // long-task counts + memory + plugin list from the page.
+                    PerformanceMonitor.shared.attach(to: wv)
+                    if Preferences.shared.enablePerformanceMonitoring {
+                        PerformanceMonitor.shared.start()
+                    }
                 },
                 onReload: {
                     idleWatcher.reset()

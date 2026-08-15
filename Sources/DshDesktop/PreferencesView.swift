@@ -32,6 +32,13 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Enable browser performance monitor", isOn: $prefs.enablePerformanceMonitoring)
+                    .help("Polls dsh's UI every 10s for long-running tasks (>100ms), JS heap usage, and a list of currently-loaded plugins. Adds a 'Performance' item to the menu bar; click for details. Off by default.")
+            } header: {
+                Text("Diagnostics").font(.headline)
+            }
+
+            Section {
                 Button("Reset to Defaults") {
                     prefs.resetToDefaults()
                     portText = String(prefs.port)

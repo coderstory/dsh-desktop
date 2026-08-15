@@ -17,12 +17,14 @@ public final class Preferences: ObservableObject, @unchecked Sendable {
         public static let notificationsEnabled = "preferences.notificationsEnabled"
         public static let pollingIntervalSeconds = "preferences.pollingIntervalSeconds"
         public static let pausePollingWhenHidden = "preferences.pausePollingWhenHidden"
+        public static let enablePerformanceMonitoring = "preferences.enablePerformanceMonitoring"
     }
 
     public static let defaultPort: Int = 3080
     public static let defaultNotificationsEnabled: Bool = true
     public static let defaultPollingIntervalSeconds: Double = 5.0
     public static let defaultPausePollingWhenHidden: Bool = false
+    public static let defaultEnablePerformanceMonitoring: Bool = false
     /// Clamp range for the polling-interval slider (seconds).
     public static let pollingIntervalRange: ClosedRange<Double> = 1.0...60.0
 
@@ -60,17 +62,46 @@ public final class Preferences: ObservableObject, @unchecked Sendable {
         }
     }
 
+    /// When true, a `PerformanceMonitor` polls dsh's in-page performance
+    /// every 10s and surfaces long-task counts + memory + currently-loaded
+    /// plugins in the menu bar. Off by default — opt in via Settings
+    /// or `DshDesktop --debug` (which also enables this).
+    @Published public var enablePerformanceMonitoring: Bool {
+        didSet {
+            defaults.set(enablePerformanceMonitoring, forKey: Keys.enablePerformanceMonitoring)
+            Log.app.info("Preferences: enablePerformanceMonitoring → \(self.enablePerformanceMonitoring)")
+            // Live-toggle the monitor. PerformanceMonitor is @MainActor;
+            // dispatch the mutation to the main actor.
+            let enabled = self.enablePerformanceMonitoring
+            Task { @MainActor in
+                PerformanceMonitor.shared.enabled = enabled
+                if enabled {
+                    PerformanceMonitor.shared.start()
+                } else {
+                    PerformanceMonitor.shared.stop()
+                }
+            }
+        }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let port = defaults.object(forKey: Keys.port) as? Int
         let notifs = defaults.object(forKey: Keys.notificationsEnabled) as? Bool
         let poll = defaults.object(forKey: Keys.pollingIntervalSeconds) as? Double
         let pauseHidden = defaults.object(forKey: Keys.pausePollingWhenHidden) as? Bool
+        let perfMon = defaults.object(forKey: Keys.enablePerformanceMonitoring) as? Bool
 
         self.port = Self.sanitizePort(port) ?? Self.defaultPort
         self.notificationsEnabled = notifs ?? Self.defaultNotificationsEnabled
         self.pollingIntervalSeconds = Self.sanitizePollingInterval(poll) ?? Self.defaultPollingIntervalSeconds
         self.pausePollingWhenHidden = pauseHidden ?? Self.defaultPausePollingWhenHidden
+        self.enablePerformanceMonitoring = perfMon ?? Self.defaultEnablePerformanceMonitoring
+        // Sync the monitor after init (MainActor).
+        let enabled = self.enablePerformanceMonitoring
+        Task { @MainActor in
+            PerformanceMonitor.shared.enabled = enabled
+        }
     }
 
     public func resetToDefaults() {
@@ -78,6 +109,7 @@ public final class Preferences: ObservableObject, @unchecked Sendable {
         notificationsEnabled = Self.defaultNotificationsEnabled
         pollingIntervalSeconds = Self.defaultPollingIntervalSeconds
         pausePollingWhenHidden = Self.defaultPausePollingWhenHidden
+        enablePerformanceMonitoring = Self.defaultEnablePerformanceMonitoring
     }
 
     private static func sanitizePort(_ value: Int?) -> Int? {
