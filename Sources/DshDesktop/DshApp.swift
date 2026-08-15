@@ -78,6 +78,7 @@ struct DshApp: App {
                 .onAppear {
                     appDelegate.process = process
                     appDelegate.idleWatcher = idleWatcher
+                    DSHAppProxy.process = process
                 }
                 // Hot-reload: when user changes polling interval in Settings,
                 // push the new value into the running watcher.
@@ -152,6 +153,10 @@ struct DshApp: App {
 
                 Button("Update dsh…") {
                     appDelegate.runDshUpdate()
+                }
+
+                Button("Save Diagnostic Report…") {
+                    appDelegate.saveDiagnosticReport()
                 }
             }
 
@@ -294,6 +299,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             await proc?.stop()
             NSApp.terminate(nil)
         }
+    }
+
+    /// Triggered from the dsh ▸ Save Diagnostic Report… menu item.
+    /// Writes a plain-text report to a user-chosen location.
+    @MainActor
+    func saveDiagnosticReport() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "DshDesktop-Diagnostic-\(timestampString()).txt"
+        panel.title = "Save Diagnostic Report"
+        panel.message = "Save a snapshot of the wrapper's state for debugging."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let report = Diagnostics.generateReport()
+            try report.write(to: url, atomically: true, encoding: .utf8)
+            Log.app.info("Diagnostic report written to \(url.path, privacy: .public)")
+            let alert = NSAlert()
+            alert.messageText = "Diagnostic report saved"
+            alert.informativeText = url.path
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        } catch {
+            Log.errors.error("Failed to write diagnostic report: \(error.localizedDescription)")
+            let alert = NSAlert()
+            alert.messageText = "Failed to save diagnostic report"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
+    private func timestampString() -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyyMMdd-HHmmss"
+        return fmt.string(from: Date())
     }
 
     /// Triggered from the dsh ▸ Update dsh… menu item.

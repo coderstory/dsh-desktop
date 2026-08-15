@@ -52,3 +52,9 @@
 
 /* Notification body */
 "Agent finished responding" = "Agent finished responding";
+
+/* Diagnostics */
+"Save Diagnostic Report…" = "Save Diagnostic Report…";
+"Save a snapshot of the wrapper's state for debugging." = "Save a snapshot of the wrapper's state for debugging.";
+"Diagnostic report saved" = "Diagnostic report saved";
+"Failed to save diagnostic report" = "Failed to save diagnostic report";

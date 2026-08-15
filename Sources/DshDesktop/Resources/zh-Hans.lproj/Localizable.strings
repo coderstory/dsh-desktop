@@ -52,3 +52,9 @@
 
 /* Notification body */
 "Agent finished responding" = "Agent 已完成响应";
+
+/* Diagnostics */
+"Save Diagnostic Report…" = "保存诊断报告…";
+"Save a snapshot of the wrapper's state for debugging." = "保存当前状态快照以便排查问题。";
+"Diagnostic report saved" = "诊断报告已保存";
+"Failed to save diagnostic report" = "保存诊断报告失败";
