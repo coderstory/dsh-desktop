@@ -96,6 +96,7 @@ Sources/DshDesktop/
 ├── AgentIdleWatcher.swift    # DOM stream poll + state machine + cooldown
 ├── LaunchAtLogin.swift       # SMAppService.mainApp toggle
 ├── LaunchConfig.swift        # CLI parser (Sendable)
+├── DshPlugins.swift          # background-throttle patch generator (DshPlugins)
 ├── Notifications.swift       # UNUserNotificationCenter wrapper
 ├── Preferences.swift         # UserDefaults persistence + sanitization
 ├── PreferencesView.swift     # Settings scene UI
@@ -107,7 +108,13 @@ Sources/DshDesktop/
     ├── en.lproj/Localizable.strings
     ├── zh-Hans.lproj/Localizable.strings
     ├── AppIcon.svg / .icns
-    └── MenuBarIconTemplate.svg / .png / @2x.png
+    ├── MenuBarIconTemplate.svg / .png / @2x.png
+    └── dsh-plugins/background-throttle/   # bundled dsh plugin (TS)
+
+dsh-plugins/background-throttle/   # sibling dsh plugin project (TypeScript)
+├── src/index.ts              # the plugin
+├── cordis.yml               # standalone-use overlay
+└── README.md
 ```
 
 ## Tests
