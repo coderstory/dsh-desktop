@@ -97,4 +97,30 @@ struct DshProcessTests {
         await proc.stop()
         #expect(proc.state == .exited)
     }
+
+    @Test func releaseOwnership_flipsOwnsChild() {
+        let proc = DshProcess(
+            executable: URL(fileURLWithPath: "/bin/echo"),
+            arguments: [],
+            port: 3080
+        )
+        #expect(proc.ownsChild)
+        proc.releaseOwnership()
+        #expect(!proc.ownsChild)
+        // Idempotent: calling twice is a no-op.
+        proc.releaseOwnership()
+        #expect(!proc.ownsChild)
+    }
+
+    @Test func start_afterReleaseOwnership_setsRunningWithoutSpawn() async {
+        let proc = DshProcess(
+            executable: URL(fileURLWithPath: "/bin/echo"),
+            arguments: [],
+            port: 3080
+        )
+        proc.releaseOwnership()
+        await proc.start()
+        // No actual child was spawned; state still goes to .running.
+        #expect(proc.state == .running)
+    }
 }
