@@ -64,4 +64,12 @@ public final class PerformanceMonitor: ObservableObject {
         }
         onUpdate?()
     }
+
+    /// Test-only: reset transient state. Not part of the public API.
+    internal func _resetForTests() {
+        stop()
+        lastStats = nil
+        lastSampleAt = nil
+        enabled = false
+    }
 }
