@@ -5,6 +5,23 @@ All notable changes to DshDesktop are documented here. Versions follow
 
 ## [Unreleased]
 
+### Fixed
+- **`DshLocator.whichDefault` uses login shell** (`zsh -l -c "command -v dsh"`,
+  then `bash -l -c …`, then plain `env which dsh` as fallback). GUI apps
+  launched from Finder/Dock inherit a minimal PATH missing npm-global
+  bin (e.g. `~/.global-npm/bin`); login shells source `~/.zshrc` /
+  `~/.bash_profile` and expose the full user PATH. Fixes "dsh not found"
+  on launch even when dsh is installed.
+
+### Added
+- **`Preferences.pausePollingWhenHidden`** — when ON, `AgentIdleWatcher`
+  polling is paused when the main window is hidden (close button) and
+  resumed on `windowDidBecomeKey`. Saves the (negligible) polling CPU
+  during background; dsh's own plugin CPU is unaffected — the help
+  string is explicit about this.
+- **`AgentIdleWatcher.pause()` / `start()`** — pause/resume the polling
+  task without touching `state`. Idempotent.
+
 ### Changed
 - **Deployment target raised to macOS 25.0** (was macOS 13.0). Unlocks
   `SettingsLink`-era SwiftUI APIs, looser Swift 6 strict-concurrency
@@ -13,6 +30,22 @@ All notable changes to DshDesktop are documented here. Versions follow
   the running watcher picks up changes from `Preferences` on the next tick.
 - `Preferences` no longer `@MainActor`; UI consumers read `@Published`
   properties on main thread automatically via SwiftUI view updates.
+- **Refactored file structure** — `Sources/DshDesktop/` now has
+  subdirectories: `Overlays/` (LoadingOverlay, FailedOverlay) and
+  `WebView/` (DSHWebView+IdleProbe). Single-responsibility views,
+  WKWebView idle-probe JS centralized in a typed extension
+  (`WKWebView.dshIsAgentStreaming()`).
+- **Refactored ownership** — `DshApp` now owns `process`, `prefs`,
+  and `idleWatcher` as `@StateObject` (single source of truth) and
+  passes them to `ContentView` via init. Hot-reload
+  (`.onChange(of: prefs.pollingIntervalSeconds)`) fires in `DshApp.body`.
+- **DshProcess supports ownership release** — `releaseOwnership()` flips
+  `ownsChild` from true to false for pre-check reuse (see
+  `ContentView.startFlow`).
+- `ContentView.startFlow` does a 1.5s pre-check on port 3080 (or
+  configured port) — if dsh is already serving, releases ownership and
+  reuses the existing instance instead of spawning. Matches the original
+  "if 3080 refused, first launch dsh web" requirement.
 
 ### Added
 - **`Settings` scene** with `PreferencesView` (port field, notifications
