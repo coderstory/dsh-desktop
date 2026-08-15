@@ -1,7 +1,32 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Swift / SwiftPM
 .build/
 .swiftpm/
-.build/*
 Package.resolved
+
+# Build artifacts (regenerable from Sources/DshDesktop/Resources/*.svg)
 build/
+build-icons/
+
+# Xcode
 *.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+
+# Editor
+.vscode/
+.idea/
+
+# Logs / runtime
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Secrets / local config (uncomment if you use these)
+# .env
+# .env.local
