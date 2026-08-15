@@ -9,11 +9,34 @@ struct DshApp: App {
     /// CLI-parsed launch configuration. Read once at App init.
     private static let launchConfig = LaunchConfig.current
 
+    /// Resolved dsh location, populated during init. `nil` in `--no-spawn` mode
+    /// (we don't manage dsh) or if init() bailed out before getting here.
+    private static var dshLocation: DshLocator.Location?
+
     init() {
         if Self.launchConfig.help {
             print(LaunchConfig.helpText)
             exit(0)
         }
+        if !Self.launchConfig.noSpawn {
+            // Locate dsh before showing any UI so a missing install gets a
+            // friendly alert instead of a cryptic Process.run() error.
+            do {
+                Self.dshLocation = try DshLocator.locate()
+            } catch {
+                Self.showAlertAndExit(title: "dsh not found", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private static func showAlertAndExit(title: String, message: String) -> Never {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Quit")
+        alert.runModal()
+        exit(1)
     }
 
     @StateObject private var process: DshProcess = {
@@ -27,8 +50,13 @@ struct DshApp: App {
                 ownsChild: false
             )
         }
-        let executable = URL(fileURLWithPath: "/usr/bin/env")
-        return DshProcess(executable: executable, arguments: ["dsh", "--profile", "web"], port: cfg.port)
+        // Use the resolved path from init(); fall back to /bin/false (will fail
+        // safely at start) only if init() somehow didn't set it.
+        let location = DshApp.dshLocation
+        let executable = location.map { URL(fileURLWithPath: $0.executablePath) }
+            ?? URL(fileURLWithPath: "/bin/false")
+        let arguments = location?.arguments ?? ["dsh"]
+        return DshProcess(executable: executable, arguments: arguments, port: cfg.port)
     }()
 
     var body: some Scene {
