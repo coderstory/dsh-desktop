@@ -124,6 +124,13 @@ struct DshApp: App {
 
                 Divider()
 
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { LaunchAtLogin.isEnabled() },
+                    set: { _ in LaunchAtLogin.toggle() }
+                ))
+
+                Divider()
+
                 Button("Update dsh…") {
                     appDelegate.runDshUpdate()
                 }
