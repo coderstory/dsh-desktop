@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to DshDesktop are documented here. Versions follow
+All notable changes to Dsh-Shell are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
@@ -113,9 +113,9 @@ All notable changes to DshDesktop are documented here. Versions follow
 
 ### Tests
 
-- **76 tests across 13 suites**, all passing with `-warnings-as-errors`:
-  SmokeTests (1), DshProcess (8), DshHealthCheck (4), DshLocator (4),
-  AgentIdleWatcher (14), LaunchConfig (10), LaunchAtLogin (5),
+- **78 tests across 13 suites**, all passing with `-warnings-as-errors`:
+  SmokeTests (1), DshProcess (10), DshHealthCheck (4), DshLocator (4),
+  AgentIdleWatcher (14), LaunchConfig (12), LaunchAtLogin (5),
   ShellRunner (4), Preferences (7), PerformanceMonitor (8),
   DshHealthMonitor (6), DshPlugins (6).
 

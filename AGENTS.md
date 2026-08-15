@@ -1,4 +1,4 @@
-# AGENTS.md — DshDesktop 智能体简报
+# AGENTS.md — Dsh-Shell 智能体简报
 
 面向任何接手 dsh-desktop 继续开发的 agent（或未来的我自己）。读这个文件
 能省下几个小时 "翻 git log + 猜架构 + 试错" 的时间。
@@ -13,6 +13,8 @@ Web UI (`dsh web`) 装进一个 `WKWebView`。macOS 13+ → 25+，Swift 6 严格
 
 - **包管理**：SwiftPM（`Package.swift`，swift-tools 6.0）
 - **部署目标**：`.macOS(.v15)` (macOS 25.0)
+- **CFBundleDisplayName**：`Dsh-Shell`（窗口标题 + Finder/menu bar 名字）
+- **CFBundleIdentifier**：`ai.deepseek.dsh.desktop`（保留——package 身份，不变）
 - **架构**：MVVM-light，StateObject 单源真相
   - `DshApp` 拥有 `process` / `prefs` / `idleWatcher` 三个 @StateObject
   - `ContentView` 是薄 view，从 DshApp 通过 init 接收

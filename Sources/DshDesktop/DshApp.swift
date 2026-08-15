@@ -100,7 +100,7 @@ struct DshApp: App {
     }()
 
     var body: some Scene {
-        Window("dsh", id: "main") {
+        Window("Dsh-Shell", id: "main") {
             ContentView(process: process, prefs: prefs, idleWatcher: idleWatcher)
                 .frame(minWidth: 800, minHeight: 500)
                 .onAppear {

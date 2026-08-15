@@ -36,7 +36,7 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleName</key>
     <string>DshDesktop</string>
     <key>CFBundleDisplayName</key>
-    <string>dsh</string>
+    <string>Dsh-Shell</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>
