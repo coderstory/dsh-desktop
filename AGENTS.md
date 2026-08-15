@@ -141,9 +141,13 @@ swift test 2>&1 | tail -3
 
 ## 实现细节（高价值参考）
 
-- **DshLocator** 用 login shell（`zsh -l -c "command -v dsh"`、`bash -l` 备份、最后 `env which` 兜底）
-  因为 GUI app 从 Finder 启动时 PATH 只有 `/usr/bin:/bin:/usr/sbin:/sbin`，
-  npm global bin 不可见。
+- **DshLocator** 用 login shell（`zsh -l -c` + source `~/.zshrc`、`bash -l -c` + source `~/.bashrc`、
+  仅 login shell 备份、`npm config get prefix` + check `<prefix>/bin/dsh` 跨 shell、
+  最后 `env which` 兜底）。GUI app 从 Finder 启动时 PATH 只有
+  `/usr/bin:/bin:/usr/sbin:/sbin`，npm global bin 不可见；
+  `zsh -l` 不会 source `~/.zshrc`（interactive config），所以第二个策略显式 source。
+  `npm config get prefix` 是不依赖 shell init 的最后兜底。
+  用户也可传 `--dsh-path <abs>` 完全跳过 shell 查找。
 - **DshProcess.markFailedExternally(reason)** — guard 在 `.exited / .failed` 状态时
   静默忽略。`DshHealthMonitor` 用它把"dsh 死了"转成 .failed。
 - **DshProcess.start()**（无 spawn 模式）—— `if ownsChild else { state = .running; return }`。

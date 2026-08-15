@@ -48,11 +48,23 @@ open /Applications/DshDesktop.app
 | Flag | Effect |
 |---|---|
 | `--port <N>` | TCP port dsh serves on (default: 3080, or from Preferences) |
+| `--dsh-path <P>` | Absolute path to dsh binary; skips shell-based `which` lookup (use this if your `PATH` is set in `~/.zshrc` which the wrapper's login shell doesn't source) |
 | `--no-spawn` | Don't launch dsh; connect to an externally-managed dsh on `--port` |
 | `--debug` | Verbose os.log output (subsystem `ai.deepseek.dsh.desktop`) |
 | `--help`, `-h` | Print help and exit |
 
 Unknown flags are silently ignored (so the test runner can pass `--test-bundle-path` etc.).
+
+### DshLocator lookup strategy (in order)
+
+1. `zsh -l -c "...source ~/.zshrc; command -v dsh"` (login + interactive config)
+2. `bash -l -c "...source ~/.bashrc; command -v dsh"`
+3. `zsh -l -c "command -v dsh"` (login only)
+4. `bash -l -c "command -v dsh"`
+5. `npm config get prefix` + check `<prefix>/bin/dsh` (Node-aware, no shell init)
+6. `env which dsh` (last-resort)
+
+If all fail, the wrapper shows a friendly "dsh not found" alert with install instructions. Use `--dsh-path <abs>` to skip all of the above.
 
 ## Settings
 

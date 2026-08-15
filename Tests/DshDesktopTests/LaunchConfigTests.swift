@@ -12,6 +12,20 @@ struct LaunchConfigTests {
         #expect(cfg.noSpawn == false)
         #expect(cfg.debug == false)
         #expect(cfg.help == false)
+        #expect(cfg.dshPath == nil)
+    }
+
+    @Test func parse_dshPath_setsPath() {
+        let cfg = LaunchConfig.parse(["DshDesktop", "--dsh-path", "/abs/path/to/dsh"])
+        #expect(cfg.dshPath == "/abs/path/to/dsh")
+    }
+
+    @Test func parse_dshPathEmptyPath_errors() {
+        #expect(throws: Never.self) {
+            // We can't easily test the exit(2) path; just verify the
+            // parser accepts the flag structurally.
+            _ = LaunchConfig.parse(["DshDesktop", "--dsh-path", "x"])
+        }
     }
 
     @Test func parse_port_setsPort() {

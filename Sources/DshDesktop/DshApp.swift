@@ -23,8 +23,16 @@ struct DshApp: App {
         if !Self.launchConfig.noSpawn {
             // Locate dsh before showing any UI so a missing install gets a
             // friendly alert instead of a cryptic Process.run() error.
+            // --dsh-path skips the shell-based lookup entirely.
             do {
-                Self.dshLocation = try DshLocator.locate()
+                if let path = Self.launchConfig.dshPath {
+                    Self.dshLocation = DshLocator.Location(
+                        executablePath: path,
+                        arguments: ["dsh", "--profile", "web"]
+                    )
+                } else {
+                    Self.dshLocation = try DshLocator.locate()
+                }
             } catch {
                 Self.showAlertAndExit(title: "dsh not found", message: error.localizedDescription)
             }
