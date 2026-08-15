@@ -20,7 +20,10 @@ public enum Notifications {
     }
 
     /// Schedule a notification with the given title and body, fired ~0.1s out.
-    /// No-op if permission was denied (requestAuthorization returned false).
+/// No-op if permission was denied (requestAuthorization returned false).
+/// Callers should localize `title` and `body` via `String(localized:)` before
+/// passing — UNNotificationContent doesn't support LocalizedStringResource
+/// parameters directly.
     public static func notify(title: String, body: String) async {
         let content = UNMutableNotificationContent()
         content.title = title

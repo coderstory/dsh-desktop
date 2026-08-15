@@ -68,5 +68,11 @@ cp "$ICON_SRC/AppIcon.icns" "$RES/AppIcon.icns"
 test -f "$ICON_SRC/MenuBarIconTemplate.png" && cp "$ICON_SRC/MenuBarIconTemplate.png" "$RES/MenuBarIconTemplate.png"
 test -f "$ICON_SRC/MenuBarIconTemplate@2x.png" && cp "$ICON_SRC/MenuBarIconTemplate@2x.png" "$RES/MenuBarIconTemplate@2x.png"
 
+# Bundle localizations (.lproj/Localizable.strings per language)
+for lproj in "$ICON_SRC"/*.lproj; do
+    [ -d "$lproj" ] || continue
+    cp -R "$lproj" "$RES/"
+done
+
 echo "==> wrote $APP"
 echo "next: ./scripts/sign.sh"

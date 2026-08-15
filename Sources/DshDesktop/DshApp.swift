@@ -180,9 +180,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show dsh", action: #selector(showWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: String(localized: "Show dsh"), action: #selector(showWindow), keyEquivalent: ""))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: String(localized: "Quit"), action: #selector(quitApp), keyEquivalent: "q"))
         item.menu = menu
         statusItem = item
     }
@@ -206,10 +206,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func runDshUpdate() {
         Log.menu.info("Update dsh requested")
         let alert = NSAlert()
-        alert.messageText = "Update dsh"
-        alert.informativeText = "Run `npm update -g @deepseek-ai/dsh`? A restart will be required afterward."
-        alert.addButton(withTitle: "Update")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Update dsh")
+        alert.informativeText = String(localized: "Run `npm update -g @deepseek-ai/dsh`? A restart will be required afterward.")
+        alert.addButton(withTitle: String(localized: "Update"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         Task {
@@ -220,9 +220,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             await MainActor.run {
                 Log.dsh.info("Update dsh: exit=\(result.exitCode) success=\(result.success)")
                 let doneAlert = NSAlert()
-                doneAlert.messageText = result.success ? "Update successful" : "Update failed"
-                doneAlert.informativeText = "Exit \(result.exitCode)\n\n\(result.output)"
-                doneAlert.addButton(withTitle: "OK")
+                doneAlert.messageText = result.success
+                    ? String(localized: "Update successful")
+                    : String(localized: "Update failed")
+                doneAlert.informativeText = String(
+                    format: String(localized: "Exit %d\n\n%@"),
+                    result.exitCode, result.output
+                )
+                doneAlert.addButton(withTitle: String(localized: "OK"))
                 doneAlert.runModal()
             }
         }

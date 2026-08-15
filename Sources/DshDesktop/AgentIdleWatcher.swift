@@ -80,6 +80,9 @@ public final class AgentIdleWatcher: ObservableObject {
         }
 
         lastNotifiedAt = Date()
-        await notify("dsh", "Agent finished responding")
+        await notify(
+            String(localized: "dsh"),
+            String(localized: "Agent finished responding")
+        )
     }
 }
