@@ -191,6 +191,23 @@ struct DshApp: App {
                         NSWorkspace.shared.open(url)
                     }
                 }
+                Button("DshDesktop on GitHub") {
+                    if let url = URL(string: "https://github.com/deepseek-ai/dsh-desktop") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("View CHANGELOG") {
+                    let url = URL(fileURLWithPath: "CHANGELOG.md", relativeTo: Bundle.main.bundleURL)
+                        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                    NSWorkspace.shared.open(url)
+                }
+                Button("Open Console.app (filtered)") {
+                    if let consoleURL = URL(string: "console-app://") {
+                        NSWorkspace.shared.open(consoleURL)
+                    }
+                    // Note: opening with a subsystem filter isn't supported via URL.
+                    // The user can filter by subsystem 'ai.deepseek.dsh.desktop' manually.
+                }
             }
         }
 
