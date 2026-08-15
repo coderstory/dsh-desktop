@@ -25,6 +25,8 @@ struct PreferencesView: View {
             Section {
                 PollingIntervalRow(seconds: $prefs.pollingIntervalSeconds)
                     .help("How often DshDesktop checks the dsh UI for the busy/idle indicator.")
+                Toggle("Pause polling when window is hidden", isOn: $prefs.pausePollingWhenHidden)
+                    .help("Stops the DOM polling loop while the main window is closed. Resumes when you reopen the window. Saves a small amount of CPU; note that dsh's own CPU usage from its UI/plugins is unaffected.")
             } header: {
                 Text("Polling").font(.headline)
             }
@@ -37,7 +39,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 380)
+        .frame(width: 460, height: 440)
         .onAppear {
             portText = String(prefs.port)
         }

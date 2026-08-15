@@ -53,6 +53,16 @@ public final class AgentIdleWatcher: ObservableObject {
         task = nil
     }
 
+    /// Suspend the polling loop without changing `state`. Idempotent.
+    /// Use when the user wants lower background activity (e.g. window
+    /// hidden, battery saver). Resumes via `start()`.
+    public func pause() {
+        guard task != nil else { return }
+        task?.cancel()
+        task = nil
+        Log.ui.info("AgentIdleWatcher: paused")
+    }
+
     public func reset() {
         state = .idle
         lastNotifiedAt = nil

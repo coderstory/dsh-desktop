@@ -60,11 +60,30 @@ struct DshApp: App {
         return DshProcess(executable: executable, arguments: arguments, port: cfg.resolvedPort)
     }()
 
+    @StateObject private var prefs = Preferences.shared
+
+    @StateObject private var idleWatcher: AgentIdleWatcher = {
+        let prefs = Preferences.shared
+        return AgentIdleWatcher(
+            pollInterval: prefs.pollingIntervalSeconds,
+            evaluator: { false },
+            isNotificationsEnabled: { prefs.notificationsEnabled }
+        )
+    }()
+
     var body: some Scene {
         Window("dsh", id: "main") {
-            ContentView(process: process)
+            ContentView(process: process, prefs: prefs, idleWatcher: idleWatcher)
                 .frame(minWidth: 800, minHeight: 500)
-                .onAppear { appDelegate.process = process }
+                .onAppear {
+                    appDelegate.process = process
+                    appDelegate.idleWatcher = idleWatcher
+                }
+                // Hot-reload: when user changes polling interval in Settings,
+                // push the new value into the running watcher.
+                .onChange(of: prefs.pollingIntervalSeconds) { _, newValue in
+                    idleWatcher.pollInterval = newValue
+                }
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
@@ -148,15 +167,18 @@ struct DshApp: App {
 
         // Settings scene — opens via Cmd+, (standard macOS shortcut).
         Settings {
-            PreferencesView(prefs: Preferences.shared)
+            PreferencesView(prefs: prefs)
         }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
-    // Keep strong ref so we can stop the process on quit.
+    /// Set by `DshApp.body.onAppear`. Strong refs so deinit doesn't drop them
+    /// while a window-delegate callback still references them.
     var process: DshProcess?
+    var idleWatcher: AgentIdleWatcher?
+
     private var statusItem: NSStatusItem?
 
     private static let mainWindowAutosaveName = "DshDesktop.MainWindow"
@@ -243,6 +265,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Log.ui.info("main window closed; app stays in menu bar")
         // Window hidden (LSUIElement style). App stays alive.
         // User reopens via menu bar icon's "Show dsh" item.
+        if Preferences.shared.pausePollingWhenHidden {
+            idleWatcher?.pause()
+        }
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        // Resume the idle-watcher polling when the window comes back.
+        if Preferences.shared.pausePollingWhenHidden {
+            idleWatcher?.start()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

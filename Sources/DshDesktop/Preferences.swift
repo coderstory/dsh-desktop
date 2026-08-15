@@ -16,11 +16,13 @@ public final class Preferences: ObservableObject, @unchecked Sendable {
         public static let port = "preferences.port"
         public static let notificationsEnabled = "preferences.notificationsEnabled"
         public static let pollingIntervalSeconds = "preferences.pollingIntervalSeconds"
+        public static let pausePollingWhenHidden = "preferences.pausePollingWhenHidden"
     }
 
     public static let defaultPort: Int = 3080
     public static let defaultNotificationsEnabled: Bool = true
     public static let defaultPollingIntervalSeconds: Double = 5.0
+    public static let defaultPausePollingWhenHidden: Bool = false
     /// Clamp range for the polling-interval slider (seconds).
     public static let pollingIntervalRange: ClosedRange<Double> = 1.0...60.0
 
@@ -47,21 +49,35 @@ public final class Preferences: ObservableObject, @unchecked Sendable {
         }
     }
 
+    /// When true, `AgentIdleWatcher` is paused while the wrapper window
+    /// is hidden (closed) and resumed on next show. Saves the (negligible)
+    /// polling CPU during background. Note: dsh's own CPU is unaffected —
+    /// see README for details.
+    @Published public var pausePollingWhenHidden: Bool {
+        didSet {
+            defaults.set(pausePollingWhenHidden, forKey: Keys.pausePollingWhenHidden)
+            Log.app.info("Preferences: pausePollingWhenHidden → \(self.pausePollingWhenHidden)")
+        }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let port = defaults.object(forKey: Keys.port) as? Int
         let notifs = defaults.object(forKey: Keys.notificationsEnabled) as? Bool
         let poll = defaults.object(forKey: Keys.pollingIntervalSeconds) as? Double
+        let pauseHidden = defaults.object(forKey: Keys.pausePollingWhenHidden) as? Bool
 
         self.port = Self.sanitizePort(port) ?? Self.defaultPort
         self.notificationsEnabled = notifs ?? Self.defaultNotificationsEnabled
         self.pollingIntervalSeconds = Self.sanitizePollingInterval(poll) ?? Self.defaultPollingIntervalSeconds
+        self.pausePollingWhenHidden = pauseHidden ?? Self.defaultPausePollingWhenHidden
     }
 
     public func resetToDefaults() {
         port = Self.defaultPort
         notificationsEnabled = Self.defaultNotificationsEnabled
         pollingIntervalSeconds = Self.defaultPollingIntervalSeconds
+        pausePollingWhenHidden = Self.defaultPausePollingWhenHidden
     }
 
     private static func sanitizePort(_ value: Int?) -> Int? {

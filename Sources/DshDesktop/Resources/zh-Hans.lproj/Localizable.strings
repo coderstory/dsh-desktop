@@ -4,7 +4,6 @@
 "Starting dsh…" = "正在启动 dsh…";
 "Waiting for http://%lld…" = "等待 http://127.0.0.1:%lld…";
 "dsh failed to start" = "dsh 启动失败";
-"dsh stopped" = "dsh 已停止";
 "Reason: %@" = "原因：%@";
 
 /* Buttons */
@@ -13,6 +12,18 @@
 "Update" = "更新";
 "Cancel" = "取消";
 "OK" = "好";
+
+/* Preferences (Settings scene) */
+"Server" = "服务器";
+"Notifications" = "通知";
+"Polling" = "轮询";
+"Pause polling when window is hidden" = "窗口隐藏时暂停轮询";
+"Port" = "端口";
+"Apply" = "应用";
+"Reset to Defaults" = "恢复默认";
+"How often DshDesktop checks the dsh UI for the busy/idle indicator." = "DshDesktop 检查 dsh 是否忙碌的频率。";
+"dsh listens on this port. Restart dsh (dsh menu) to apply." = "dsh 监听此端口。需重启 dsh（在 dsh 菜单）生效。";
+"Range: %ds – %ds. Default: %ds." = "范围：%ds – %ds。默认：%ds。";
 
 /* App menu */
 "About DshDesktop" = "关于 DshDesktop";

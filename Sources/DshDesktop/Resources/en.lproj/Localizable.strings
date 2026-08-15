@@ -4,7 +4,6 @@
 "Starting dsh…" = "Starting dsh…";
 "Waiting for http://%lld…" = "Waiting for http://%lld…";
 "dsh failed to start" = "dsh failed to start";
-"dsh stopped" = "dsh stopped";
 "Reason: %@" = "Reason: %@";
 
 /* Buttons */
@@ -13,6 +12,18 @@
 "Update" = "Update";
 "Cancel" = "Cancel";
 "OK" = "OK";
+
+/* Preferences (Settings scene) */
+"Server" = "Server";
+"Notifications" = "Notifications";
+"Polling" = "Polling";
+"Pause polling when window is hidden" = "Pause polling when window is hidden";
+"Port" = "Port";
+"Apply" = "Apply";
+"Reset to Defaults" = "Reset to Defaults";
+"How often DshDesktop checks the dsh UI for the busy/idle indicator." = "How often DshDesktop checks the dsh UI for the busy/idle indicator.";
+"dsh listens on this port. Restart dsh (dsh menu) to apply." = "dsh listens on this port. Restart dsh (dsh menu) to apply.";
+"Range: %ds – %ds. Default: %ds." = "Range: %ds – %ds. Default: %ds.";
 
 /* App menu */
 "About DshDesktop" = "About DshDesktop";

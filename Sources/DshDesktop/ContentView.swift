@@ -5,18 +5,10 @@ import WebKit
 struct ContentView: View {
 
     @StateObject var process: DshProcess
+    @ObservedObject var prefs: Preferences
+    @ObservedObject var idleWatcher: AgentIdleWatcher
     @State private var webReady: Bool = false
     @State private var overlayHidden: Bool = false
-    @StateObject private var prefs = Preferences.shared
-    @StateObject private var idleWatcher: AgentIdleWatcher = {
-        // Placeholder evaluator; replaced in onWebViewReady once WKWebView exists.
-        let prefs = Preferences.shared
-        return AgentIdleWatcher(
-            pollInterval: prefs.pollingIntervalSeconds,
-            evaluator: { false },
-            isNotificationsEnabled: { prefs.notificationsEnabled }
-        )
-    }()
 
     private var webURL: URL { URL(string: "http://127.0.0.1:\(process.port)/")! }
 
@@ -54,11 +46,8 @@ struct ContentView: View {
         .onDisappear {
             idleWatcher.stop()
         }
-        // Hot-reload from Preferences: when user changes polling interval in
-        // Settings, push it to the running watcher; the next tick uses it.
-        .onChange(of: prefs.pollingIntervalSeconds) { _, newValue in
-            idleWatcher.pollInterval = newValue
-        }
+        // (Polling-interval hot-reload is handled in DshApp's body, where
+        // idleWatcher is the @StateObject — single source of truth.)
     }
 
     @ViewBuilder
@@ -85,17 +74,30 @@ struct ContentView: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
 
         case .failed(let reason):
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 36))
                     .foregroundStyle(.orange)
-                Text("dsh stopped")
+                Text("dsh failed to start")
                     .font(.headline)
                 Text(reason)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 320)
+                if !process.stderrTail.isEmpty {
+                    ScrollView {
+                        Text(process.stderrTail)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .padding(8)
+                    }
+                    .frame(maxHeight: 200)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 8)
+                }
                 HStack(spacing: 12) {
                     Button("Restart") {
                         Task { await process.restart() }
@@ -116,19 +118,33 @@ struct ContentView: View {
     }
 
     private func startFlow() async {
+        let port = process.port
+        Log.ui.info("startFlow: pre-checking port \(port)")
+
+        // Pre-check: if 3080 (or whatever port) is already serving, reuse
+        // the externally-managed dsh — don't spawn, don't kill on quit.
+        let alreadyUp = await DshHealthCheck.waitUntilReady(port: port, timeout: 1.5)
+        if alreadyUp {
+            Log.ui.info("startFlow: port \(port) already serving; reusing existing dsh")
+            process.releaseOwnership()
+            await process.start()  // sets state → .running (external mode)
+            withAnimation(.easeIn(duration: 0.4)) { webReady = true }
+            try? await Task.sleep(for: .milliseconds(500))
+            withAnimation(.easeOut(duration: 0.4)) { overlayHidden = true }
+            return
+        }
+
+        // Port not responding — spawn our own dsh.
+        Log.ui.info("startFlow: port \(port) refused; spawning dsh")
         await process.start()
         guard case .running = process.state else { return }
-        let ok = await DshHealthCheck.waitUntilReady(
-            port: process.port, timeout: 10.0
-        )
+
+        // Wait up to 10s for dsh to bind the port.
+        let ok = await DshHealthCheck.waitUntilReady(port: port, timeout: 10.0)
         if ok {
-            withAnimation(.easeIn(duration: 0.4)) {
-                webReady = true
-            }
+            withAnimation(.easeIn(duration: 0.4)) { webReady = true }
             try? await Task.sleep(for: .milliseconds(500))
-            withAnimation(.easeOut(duration: 0.4)) {
-                overlayHidden = true
-            }
+            withAnimation(.easeOut(duration: 0.4)) { overlayHidden = true }
         }
         // If !ok, the state transition to .failed will be picked up by onChange.
     }
