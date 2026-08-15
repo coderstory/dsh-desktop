@@ -13,6 +13,17 @@ All notable changes to DshDesktop are documented here. Versions follow
   menu bar; click for a detailed alert. WebKit's `PerformanceLongTaskTiming`
   lacks the `attribution` field Chromium has, so per-plugin attribution
   is heuristic (correlate spike timing with active plugin list).
+- **Bundled dsh plugin: `background-throttle`** (in
+  `dsh-plugins/background-throttle/`) — a TypeScript plugin that
+  intercepts `setInterval` / `setTimeout` / `requestAnimationFrame`
+  on first call, tracks all active IDs, and clears them all when
+  `document.visibilityState` becomes `hidden`. User code re-schedules
+  normally on the next visible tick. Bundled inside the wrapper's
+  `Contents/Resources/dsh-plugins/`; loaded by dsh via a synthesized
+  `--patch <temp.yml>` (the wrapper generates it on launch and cleans
+  it up on quit). Solves the dominant CPU complaint: when the user
+  switches to another app or browser tab, dsh's WebView was keeping
+  all plugins running at full speed; now they're paused.
 - **`dsh ▸ Save Diagnostic Report…`** — writes a plain-text snapshot
   of the wrapper's state (prefs, monitor stats, recent os.log lines
   via `OSLogStore`) to a user-chosen file. Useful for bug reports.
@@ -98,11 +109,11 @@ All notable changes to DshDesktop are documented here. Versions follow
 
 ### Tests
 
-- **70 tests across 12 suites**, all passing with `-warnings-as-errors`:
+- **76 tests across 13 suites**, all passing with `-warnings-as-errors`:
   SmokeTests (1), DshProcess (8), DshHealthCheck (4), DshLocator (4),
   AgentIdleWatcher (14), LaunchConfig (10), LaunchAtLogin (5),
   ShellRunner (4), Preferences (7), PerformanceMonitor (8),
-  DshHealthMonitor (6).
+  DshHealthMonitor (6), DshPlugins (6).
 
 ## [0.1.0] - 2026-08-15
 
