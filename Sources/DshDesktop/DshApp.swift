@@ -6,9 +6,29 @@ struct DshApp: App {
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    /// CLI-parsed launch configuration. Read once at App init.
+    private static let launchConfig = LaunchConfig.current
+
+    init() {
+        if Self.launchConfig.help {
+            print(LaunchConfig.helpText)
+            exit(0)
+        }
+    }
+
     @StateObject private var process: DshProcess = {
+        let cfg = DshApp.launchConfig
+        if cfg.noSpawn {
+            // External dsh: the wrapper connects but doesn't manage lifecycle.
+            return DshProcess(
+                executable: URL(fileURLWithPath: "/bin/true"),
+                arguments: [],
+                port: cfg.port,
+                ownsChild: false
+            )
+        }
         let executable = URL(fileURLWithPath: "/usr/bin/env")
-        return DshProcess(executable: executable, arguments: ["dsh", "--profile", "web"], port: 3080)
+        return DshProcess(executable: executable, arguments: ["dsh", "--profile", "web"], port: cfg.port)
     }()
 
     var body: some Scene {

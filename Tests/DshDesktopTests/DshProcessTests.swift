@@ -74,4 +74,27 @@ struct DshProcessTests {
         )
         #expect(proc.state == .idle)
     }
+
+    @Test func start_external_doesNotSpawnButSetsRunning() async {
+        let proc = DshProcess(
+            executable: URL(fileURLWithPath: "/bin/true"),
+            arguments: [],
+            port: 3080,
+            ownsChild: false
+        )
+        await proc.start()
+        #expect(proc.state == .running)
+    }
+
+    @Test func stop_external_isNoOpButTransitionsToExited() async {
+        let proc = DshProcess(
+            executable: URL(fileURLWithPath: "/bin/true"),
+            arguments: [],
+            port: 3080,
+            ownsChild: false
+        )
+        await proc.start()
+        await proc.stop()
+        #expect(proc.state == .exited)
+    }
 }

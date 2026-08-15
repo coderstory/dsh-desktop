@@ -22,17 +22,28 @@ public final class DshProcess: ObservableObject {
     private let executable: URL
     private let arguments: [String]
     public let port: Int
+    /// True when this instance actually owns and manages a child Process.
+    /// False in `--no-spawn` mode (external dsh managed by the user).
+    public let ownsChild: Bool
     private var process: Process?
     private var stderrPipe: Pipe?
     private let stderrCap = 64 * 1024  // 64 KiB
 
-    public init(executable: URL, arguments: [String], port: Int) {
+    public init(executable: URL, arguments: [String], port: Int, ownsChild: Bool = true) {
         self.executable = executable
         self.arguments = arguments
         self.port = port
+        self.ownsChild = ownsChild
     }
 
     public func start() async {
+        // External mode: we don't spawn anything. Mark the process as
+        // already running; the port-health check in ContentView will
+        // confirm it's actually serving.
+        guard ownsChild else {
+            state = .running
+            return
+        }
         switch state {
         case .starting, .running:
             return
@@ -42,6 +53,11 @@ public final class DshProcess: ObservableObject {
     }
 
     public func stop(timeout: TimeInterval = 2.0) async {
+        // External mode: nothing to kill.
+        guard ownsChild else {
+            state = .exited
+            return
+        }
         guard let proc = process, proc.isRunning else {
             state = .exited
             return
