@@ -38,7 +38,7 @@ struct AgentIdleWatcherTests {
     }
 
     @Test func tick_evaluatorTrue_transitionsToBusy() async throws {
-        let (watcher, setBusy, _) = makeWatcher(initialBusy: true)
+        let (watcher, _, _) = makeWatcher(initialBusy: true)
         watcher.start()
         try await Task.sleep(for: .milliseconds(120))
         watcher.stop()

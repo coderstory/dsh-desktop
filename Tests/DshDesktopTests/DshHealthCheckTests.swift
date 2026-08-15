@@ -68,7 +68,10 @@ final class TestHTTPServer {
             if case .ready = state { semaphore.signal() }
         }
         listener.start(queue: queue)
-        _ = semaphore.wait(timeout: .now() + 2)
+        let didSignal = semaphore.wait(timeout: .now() + 2) == .success
+        guard didSignal else {
+            throw NSError(domain: "TestHTTPServer", code: 2, userInfo: [NSLocalizedDescriptionKey: "NWListener did not reach .ready within 2s"])
+        }
 
         // Small grace period to let NWListener finish any post-ready setup.
         Thread.sleep(forTimeInterval: 0.05)
