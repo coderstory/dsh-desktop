@@ -1,18 +1,37 @@
 import SwiftUI
 import AppKit
+import WebKit
 
 struct ContentView: View {
 
     @StateObject var process: DshProcess
     @State private var webReady: Bool = false
     @State private var overlayHidden: Bool = false
+    @StateObject private var idleWatcher: AgentIdleWatcher = {
+        // Placeholder evaluator; replaced in onWebViewReady once WKWebView exists.
+        AgentIdleWatcher(evaluator: { false })
+    }()
 
     private var webURL: URL { URL(string: "http://127.0.0.1:\(process.port)/")! }
 
     var body: some View {
         ZStack {
-            DSHWebView(url: webURL)
-                .opacity(webReady ? 1 : 0)
+            DSHWebView(
+                url: webURL,
+                onWebViewReady: { wv in
+                    // Replace the placeholder evaluator with one that polls WKWebView.
+                    idleWatcher.replaceEvaluator { [weak wv] in
+                        guard let wv else { return false }
+                        return await Self.isAgentStreaming(wv)
+                    }
+                    idleWatcher.reset()
+                    idleWatcher.start()
+                },
+                onReload: {
+                    idleWatcher.reset()
+                }
+            )
+            .opacity(webReady ? 1 : 0)
 
             if !overlayHidden {
                 overlay
@@ -21,9 +40,13 @@ struct ContentView: View {
         }
         .task {
             await startFlow()
+            _ = await Notifications.requestAuthorization()
         }
         .onChange(of: process.state) { newState in
             handleStateChange(newState)
+        }
+        .onDisappear {
+            idleWatcher.stop()
         }
     }
 
@@ -109,6 +132,20 @@ struct ContentView: View {
         if case .failed = state {
             webReady = false
             overlayHidden = false
+        }
+    }
+}
+
+private extension ContentView {
+    /// Poll the dsh UI for the streaming indicator.
+    /// Returns true when at least one `[data-streaming="true"]` element exists.
+    static func isAgentStreaming(_ wv: WKWebView) async -> Bool {
+        let js = "document.querySelector('[data-streaming=\"true\"]') !== null"
+        do {
+            let result = try await wv.evaluateJavaScript(js)
+            return (result as? Bool) ?? false
+        } catch {
+            return false
         }
     }
 }
