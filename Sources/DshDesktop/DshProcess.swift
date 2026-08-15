@@ -22,9 +22,11 @@ public final class DshProcess: ObservableObject {
     private let executable: URL
     private let arguments: [String]
     public let port: Int
-    /// True when this instance actually owns and manages a child Process.
-    /// False in `--no-spawn` mode (external dsh managed by the user).
-    public let ownsChild: Bool
+    /// Whether this instance actually owns and manages a child Process.
+    /// `false` means external-mode (e.g. `--no-spawn` or pre-check found dsh
+    /// already running). Settable via `releaseOwnership()` so a pre-check
+    /// pass can flip an initially-owned instance to external.
+    public private(set) var ownsChild: Bool
     private var process: Process?
     private var stderrPipe: Pipe?
     private let stderrCap = 64 * 1024  // 64 KiB
@@ -52,6 +54,16 @@ public final class DshProcess: ObservableObject {
         }
     }
 
+    /// Flip from owning the child to external mode. After this, `start()` is
+    /// a no-op (state goes directly to .running) and `stop()` won't kill any
+    /// process. Used by the pre-check in `ContentView.startFlow` when
+    /// `127.0.0.1:<port>` is already responding on launch.
+    public func releaseOwnership() {
+        guard ownsChild else { return }
+        ownsChild = false
+        Log.dsh.info("DshProcess: ownership released — child lifecycle no longer managed")
+    }
+
     public func stop(timeout: TimeInterval = 2.0) async {
         // External mode: nothing to kill.
         guard ownsChild else {
@@ -76,6 +88,19 @@ public final class DshProcess: ObservableObject {
         }
         await waitForExit(of: proc)
         state = .exited
+    }
+
+    /// Externally mark the process as failed (e.g. health monitor detects
+    /// the port has stopped responding). Skips the state transition if the
+    /// process is already in a terminal state (exited / failed).
+    public func markFailedExternally(reason: String) {
+        switch state {
+        case .exited, .failed:
+            return
+        default:
+            Log.dsh.error("DshProcess: externally marked failed — \(reason)")
+            state = .failed(reason)
+        }
     }
 
     public func restart() async {

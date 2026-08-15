@@ -79,6 +79,10 @@ struct DshApp: App {
                     appDelegate.process = process
                     appDelegate.idleWatcher = idleWatcher
                     DSHAppProxy.process = process
+                    // Health monitor: detect when dsh's port stops responding
+                    // (i.e. dsh died) and surface the FailedOverlay.
+                    DshHealthMonitor.shared.attach(to: process)
+                    DshHealthMonitor.shared.start()
                 }
                 // Hot-reload: when user changes polling interval in Settings,
                 // push the new value into the running watcher.
