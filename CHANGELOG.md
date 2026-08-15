@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Dsh-Shell are documented here. Versions follow
+All notable changes to DshDesktop are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
