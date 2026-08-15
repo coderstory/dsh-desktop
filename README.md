@@ -2,6 +2,8 @@
 
 A minimal native macOS wrapper around the `dsh --profile web` service.
 
+[![build & test](https://github.com/deepseek-ai/dsh-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/deepseek-ai/dsh-desktop/actions/workflows/build.yml)
+
 ## Requirements
 
 - macOS 13 or later
