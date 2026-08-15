@@ -76,11 +76,37 @@ done
 
 # Bundle the bundled dsh plugin(s). The wrapper generates a runtime
 # cordis.yml that points to these, then launches dsh with `--patch`.
-PLUGIN_SRC="$ROOT/dsh-plugins"
-if [ -d "$PLUGIN_SRC" ]; then
-    cp -R "$PLUGIN_SRC" "$RES/dsh-plugins"
-    echo "==> bundled dsh plugins:"
-    find "$RES/dsh-plugins" -name "*.ts" -o -name "*.yml" | sed "s|$RES/||" | sort
+#
+# Lookup order (first match wins):
+#   1. $DSHDESKTOP_PLUGINS_DIR (env override)
+#   2. ../plugins  (sibling directory of dsh-desktop, e.g. /CodeSource/plugins)
+#   3. ./dsh-plugins (legacy in-repo fallback for standalone use)
+#   4. none — wrapper still works, just without the bg-throttle plugin
+PLUGIN_SRC=""
+DSHDESKTOP_PLUGINS_DIR="${DSHDESKTOP_PLUGINS_DIR:-}"
+if [ -n "$DSHDESKTOP_PLUGINS_DIR" ] && [ -d "$DSHDESKTOP_PLUGINS_DIR" ]; then
+    PLUGIN_SRC="$DSHDESKTOP_PLUGINS_DIR"
+elif [ -d "$ROOT/../plugins" ]; then
+    PLUGIN_SRC="$ROOT/../plugins"
+elif [ -d "$ROOT/dsh-plugins" ]; then
+    PLUGIN_SRC="$ROOT/dsh-plugins"
+fi
+if [ -n "$PLUGIN_SRC" ] && [ -d "$PLUGIN_SRC" ]; then
+    # We bundle ONLY the background-throttle plugin, not the user's
+    # other plugins in the parent directory. The wrapper's job is to
+    # ship ONE specific plugin that solves the CPU issue we know about;
+    # the user's other plugins should be managed via the dsh install
+    # process or their own cordis config, not pulled in by the wrapper.
+    if [ -d "$PLUGIN_SRC/background-throttle" ]; then
+        mkdir -p "$RES/dsh-plugins"
+        cp -R "$PLUGIN_SRC/background-throttle" "$RES/dsh-plugins/background-throttle"
+        echo "==> bundled dsh plugin from: $PLUGIN_SRC/background-throttle"
+        find "$RES/dsh-plugins/background-throttle" -name "*.ts" -o -name "*.yml" | sed "s|$RES/||" | sort
+    else
+        echo "==> $PLUGIN_SRC/background-throttle not found; running dsh without bg-throttle"
+    fi
+else
+    echo "==> no dsh plugins found (DSHDESKTOP_PLUGINS_DIR / ../plugins / dsh-plugins); running dsh without bg-throttle"
 fi
 
 echo "==> wrote $APP"
