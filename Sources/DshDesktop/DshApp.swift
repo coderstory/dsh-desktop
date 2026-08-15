@@ -19,18 +19,54 @@ struct DshApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
+            // Hide all default menus
             CommandGroup(replacing: .newItem) {}
-            CommandMenu("File") {
-                Button("Open in Browser") {
-                    if let url = URL(string: "http://127.0.0.1:3080/") {
-                        NSWorkspace.shared.open(url)
-                    }
+            CommandGroup(replacing: .saveItem) {}
+            CommandGroup(replacing: .printItem) {}
+            CommandGroup(replacing: .pasteboard) {}
+            CommandGroup(replacing: .undoRedo) {}
+            CommandGroup(replacing: .textEditing) {}
+            CommandGroup(replacing: .help) {}
+
+            // App menu (About + Quit)
+            CommandGroup(replacing: .appInfo) {
+                Button("About DshDesktop") {
+                    NSApp.orderFrontStandardAboutPanel(nil)
                 }
-                .keyboardShortcut("b", modifiers: [.command])
-                Button("Reload") {
+            }
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit DshDesktop") {
+                    NSApp.terminate(nil)
+                }
+                .keyboardShortcut("q")
+            }
+
+            // dsh operations menu
+            CommandMenu("dsh") {
+                Button("Restart dsh") {
+                    Task { await process.restart() }
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                Button("Refresh Page") {
                     NotificationCenter.default.post(name: .dshReload, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: [.command])
+
+                Divider()
+
+                Button("Update dsh…") {
+                    appDelegate.runDshUpdate()
+                }
+            }
+
+            // Quick Links menu
+            CommandMenu("Quick Links") {
+                Button("GitHub Repo") {
+                    if let url = URL(string: "https://github.com/deepseek-ai/deepseek-harness") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
             }
         }
     }
@@ -40,8 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // Keep strong ref so we can stop the process on quit.
     var process: DshProcess?
+    private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupStatusItem()
         // Hook all windows' delegate to detect close.
         DispatchQueue.main.async {
             for window in NSApp.windows {
@@ -50,17 +88,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    func windowWillClose(_ notification: Notification) {
-        // Last window closing → quit the app cleanly.
+    private func setupStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = item.button {
+            // Custom template image (auto-loaded from app's Resources directory)
+            if let image = Bundle.main.image(forResource: "MenuBarIconTemplate") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                button.image = NSImage(systemSymbolName: "rectangle.connected.to.line.below", accessibilityDescription: "dsh")
+            }
+        }
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Show dsh", action: #selector(showWindow), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
+        item.menu = menu
+        statusItem = item
+    }
+
+    @objc private func showWindow() {
+        for window in NSApp.windows where !window.isVisible {
+            // No-op; clicking the menu item just unhides existing window below.
+        }
+        NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func quitApp() {
         Task { [weak self] in
-            guard let self else { return }
-            await self.process?.stop()
+            await self?.process?.stop()
             await MainActor.run { NSApp.terminate(nil) }
         }
     }
 
+    /// Triggered from the dsh ▸ Update dsh… menu item.
+    func runDshUpdate() {
+        let alert = NSAlert()
+        alert.messageText = "Update dsh"
+        alert.informativeText = "Run `npm update -g @deepseek-ai/dsh`? A restart will be required afterward."
+        alert.addButton(withTitle: "Update")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        Task {
+            let result = await ShellRunner.run(
+                "/usr/bin/env",
+                ["npm", "update", "-g", "@deepseek-ai/dsh"]
+            )
+            await MainActor.run {
+                let doneAlert = NSAlert()
+                doneAlert.messageText = result.success ? "Update successful" : "Update failed"
+                doneAlert.informativeText = "Exit \(result.exitCode)\n\n\(result.output)"
+                doneAlert.addButton(withTitle: "OK")
+                doneAlert.runModal()
+            }
+        }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // Window hidden (LSUIElement style). App stays alive.
+        // User reopens via menu bar icon's "Show dsh" item.
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        false
     }
 }
 

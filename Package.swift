@@ -10,7 +10,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "DshDesktop",
-            path: "Sources/DshDesktop"
+            path: "Sources/DshDesktop",
+            exclude: ["Resources"]
         ),
         .testTarget(
             name: "DshDesktopTests",

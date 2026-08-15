@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e7490"/>
+      <stop offset="1" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background (macOS auto-applies ~22% corner radius, but we draw flat) -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+
+  <!-- Connection lines (8 edges of the hub graph) -->
+  <g stroke="#ffffff" stroke-width="14" opacity="0.55" stroke-linecap="round">
+    <line x1="282" y1="380" x2="742" y2="380"/>
+    <line x1="282" y1="644" x2="742" y2="644"/>
+    <line x1="282" y1="380" x2="282" y2="644"/>
+    <line x1="742" y1="380" x2="742" y2="644"/>
+    <line x1="282" y1="380" x2="512" y2="512"/>
+    <line x1="742" y1="380" x2="512" y2="512"/>
+    <line x1="282" y1="644" x2="512" y2="512"/>
+    <line x1="742" y1="644" x2="512" y2="512"/>
+  </g>
+
+  <!-- Corner nodes (white circles) -->
+  <circle cx="282" cy="380" r="56" fill="#ffffff"/>
+  <circle cx="282" cy="644" r="56" fill="#ffffff"/>
+  <circle cx="742" cy="380" r="56" fill="#ffffff"/>
+  <circle cx="742" cy="644" r="56" fill="#ffffff"/>
+
+  <!-- Center node (amber ring with "d" letter) -->
+  <circle cx="512" cy="512" r="76" fill="#fbbf24" stroke="#ffffff" stroke-width="10"/>
+  <text x="512" y="538"
+        font-family="-apple-system,system-ui,'SF Pro Display',Helvetica,sans-serif"
+        font-weight="800" font-size="56" text-anchor="middle" fill="#1e3a8a">d</text>
+</svg>
