@@ -14,6 +14,7 @@ public enum Notifications {
             return try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound])
         } catch {
+            Log.errors.error("notification authorization request failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -35,7 +36,7 @@ public enum Notifications {
         do {
             try await UNUserNotificationCenter.current().add(request)
         } catch {
-            // Silent — see file header.
+            Log.errors.error("notification add failed: \(error.localizedDescription)")
         }
     }
 }

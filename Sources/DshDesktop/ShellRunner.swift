@@ -30,6 +30,7 @@ public enum ShellRunner {
                 do {
                     try proc.run()
                 } catch {
+                    Log.errors.error("ShellRunner: failed to launch \(executable): \(error.localizedDescription)")
                     cont.resume(returning: Result(
                         success: false,
                         exitCode: -1,
@@ -42,6 +43,10 @@ public enum ShellRunner {
 
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""
+
+                if proc.terminationStatus != 0 {
+                    Log.errors.error("ShellRunner: \(executable) exited \(proc.terminationStatus); output: \(output.prefix(200))")
+                }
 
                 cont.resume(returning: Result(
                     success: proc.terminationStatus == 0,

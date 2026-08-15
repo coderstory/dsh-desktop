@@ -106,8 +106,13 @@ public final class DshProcess: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if p.terminationReason == .uncaughtSignal {
+                    Log.dsh.error("dsh killed by signal")
                     self.state = .failed("dsh terminated by signal")
+                } else if p.terminationStatus != 0 {
+                    Log.dsh.error("dsh exited with code \(p.terminationStatus)")
+                    self.state = .failed("dsh exited with code \(p.terminationStatus)")
                 } else {
+                    Log.dsh.info("dsh exited cleanly")
                     self.state = .exited
                 }
             }
@@ -119,9 +124,11 @@ public final class DshProcess: ObservableObject {
         do {
             try proc.run()
         } catch {
-            state = .failed("\(executable.path) failed to launch: \(error.localizedDescription)")
+            Log.errors.error("DshProcess: failed to spawn \(self.executable.path): \(error.localizedDescription)")
+            state = .failed("\(self.executable.path) failed to launch: \(error.localizedDescription)")
             return
         }
+        Log.dsh.info("spawned dsh (pid \(proc.processIdentifier)) on port \(self.port)")
         state = .running
     }
 

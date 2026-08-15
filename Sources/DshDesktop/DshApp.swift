@@ -14,6 +14,7 @@ struct DshApp: App {
     private static var dshLocation: DshLocator.Location?
 
     init() {
+        Log.app.info("DshDesktop starting; port=\(Self.launchConfig.port) noSpawn=\(Self.launchConfig.noSpawn) debug=\(Self.launchConfig.debug)")
         if Self.launchConfig.help {
             print(LaunchConfig.helpText)
             exit(0)
@@ -196,6 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Triggered from the dsh ▸ Update dsh… menu item.
     func runDshUpdate() {
+        Log.menu.info("Update dsh requested")
         let alert = NSAlert()
         alert.messageText = "Update dsh"
         alert.informativeText = "Run `npm update -g @deepseek-ai/dsh`? A restart will be required afterward."
@@ -209,6 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 ["npm", "update", "-g", "@deepseek-ai/dsh"]
             )
             await MainActor.run {
+                Log.dsh.info("Update dsh: exit=\(result.exitCode) success=\(result.success)")
                 let doneAlert = NSAlert()
                 doneAlert.messageText = result.success ? "Update successful" : "Update failed"
                 doneAlert.informativeText = "Exit \(result.exitCode)\n\n\(result.output)"
@@ -219,6 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        Log.ui.info("main window closed; app stays in menu bar")
         // Window hidden (LSUIElement style). App stays alive.
         // User reopens via menu bar icon's "Show dsh" item.
     }

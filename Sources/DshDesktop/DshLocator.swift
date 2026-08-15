@@ -26,10 +26,14 @@ public enum DshLocator {
         do {
             try proc.run()
         } catch {
+            Log.errors.error("DshLocator: failed to spawn `which`: \(error.localizedDescription)")
             return nil
         }
         proc.waitUntilExit()
-        guard proc.terminationStatus == 0 else { return nil }
+        guard proc.terminationStatus == 0 else {
+            Log.app.info("DshLocator: `which \(name)` returned exit \(proc.terminationStatus)")
+            return nil
+        }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -41,6 +45,7 @@ public enum DshLocator {
         guard let path = which("dsh") else {
             throw DshLocatorError.notInstalled
         }
+        Log.dsh.info("located dsh at \(path)")
         return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
     }
 }
