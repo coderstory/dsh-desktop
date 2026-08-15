@@ -126,11 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var process: DshProcess?
     private var statusItem: NSStatusItem?
 
+    private static let mainWindowAutosaveName = "DshDesktop.MainWindow"
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
         // Hook all windows' delegate to detect close.
         DispatchQueue.main.async {
             for window in NSApp.windows {
+                // Restore + persist frame (position, size, display) across launches
+                _ = window.setFrameAutosaveName(Self.mainWindowAutosaveName)
                 window.delegate = self
             }
         }
