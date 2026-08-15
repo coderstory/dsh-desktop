@@ -1,0 +1,10 @@
+# Cordis overlay for the DshDesktop background-throttle plugin.
+# This file is generated at runtime by the wrapper with the absolute path
+# of the bundled plugin .ts file, but a static copy lives here for
+# development use (e.g. `pnpm dsh web --patch ./cordis.yml`).
+
+- insert:
+    - id: background-throttle
+      name: "@dsh-desktop/background-throttle"
+      # When used standalone, replace with:
+      # name: '/absolute/path/to/background-throttle/src/index.ts'

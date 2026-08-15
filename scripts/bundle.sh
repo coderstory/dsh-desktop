@@ -74,5 +74,14 @@ for lproj in "$ICON_SRC"/*.lproj; do
     cp -R "$lproj" "$RES/"
 done
 
+# Bundle the bundled dsh plugin(s). The wrapper generates a runtime
+# cordis.yml that points to these, then launches dsh with `--patch`.
+PLUGIN_SRC="$ROOT/dsh-plugins"
+if [ -d "$PLUGIN_SRC" ]; then
+    cp -R "$PLUGIN_SRC" "$RES/dsh-plugins"
+    echo "==> bundled dsh plugins:"
+    find "$RES/dsh-plugins" -name "*.ts" -o -name "*.yml" | sed "s|$RES/||" | sort
+fi
+
 echo "==> wrote $APP"
 echo "next: ./scripts/sign.sh"

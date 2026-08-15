@@ -29,6 +29,7 @@ public final class DshProcess: ObservableObject {
     public private(set) var ownsChild: Bool
     private var process: Process?
     private var stderrPipe: Pipe?
+    private var pluginPatchURL: URL?
     private let stderrCap = 64 * 1024  // 64 KiB
 
     public init(executable: URL, arguments: [String], port: Int, ownsChild: Bool = true) {
@@ -71,6 +72,10 @@ public final class DshProcess: ObservableObject {
             return
         }
         guard let proc = process, proc.isRunning else {
+            // Even if the process already exited, the plugin patch file
+            // we created at launch is still on disk; clean it up.
+            DshPlugins.cleanup(pluginPatchURL)
+            pluginPatchURL = nil
             state = .exited
             return
         }
@@ -87,6 +92,8 @@ public final class DshProcess: ObservableObject {
             #endif
         }
         await waitForExit(of: proc)
+        DshPlugins.cleanup(pluginPatchURL)
+        pluginPatchURL = nil
         state = .exited
     }
 
@@ -113,7 +120,26 @@ public final class DshProcess: ObservableObject {
     private func launch() async {
         let proc = Process()
         proc.executableURL = executable
-        proc.arguments = arguments
+
+        // Compose the argv: caller-supplied args + --port + (optional)
+        // --patch pointing at the bundled background-throttle plugin.
+        // We append --port to ensure dsh binds the user's chosen port
+        // regardless of the caller's arguments.
+        var args = arguments
+        args.append(contentsOf: ["--port", String(port)])
+
+        // Inject the bundled dsh plugin(s) as a patch file. This is
+        // what tells dsh to load our background-throttle TypeScript
+        // module alongside its own plugins.
+        if let patchURL = DshPlugins.writeBackgroundThrottlePatch() {
+            pluginPatchURL = patchURL
+            args.append(contentsOf: ["--patch", patchURL.path])
+            Log.app.info("dsh plugin patch: \(patchURL.path)")
+        } else {
+            Log.app.notice("dsh plugin patch not available (no bundled plugins); running dsh without patch")
+        }
+
+        proc.arguments = args
         // Inherit user's PATH/environment.
         proc.environment = ProcessInfo.processInfo.environment
 
