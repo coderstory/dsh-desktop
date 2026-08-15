@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import WebKit
 
 struct ContentView: View {
 
@@ -17,10 +16,11 @@ struct ContentView: View {
             DSHWebView(
                 url: webURL,
                 onWebViewReady: { wv in
-                    // Replace the placeholder evaluator with one that polls WKWebView.
+                    // Wire the running evaluator: poll dsh's UI for the
+                    // streaming indicator on the configured interval.
                     idleWatcher.replaceEvaluator { [weak wv] in
                         guard let wv else { return false }
-                        return await Self.isAgentStreaming(wv)
+                        return await wv.dshIsAgentStreaming()
                     }
                     idleWatcher.reset()
                     idleWatcher.start()
@@ -38,7 +38,6 @@ struct ContentView: View {
         }
         .task {
             await startFlow()
-            _ = await Notifications.requestAuthorization()
         }
         .onChange(of: process.state) { _, newState in
             handleStateChange(newState)
@@ -54,63 +53,23 @@ struct ContentView: View {
     private var overlay: some View {
         switch process.state {
         case .idle, .starting:
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("Starting dsh…")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(32)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            LoadingOverlay(title: "Starting dsh…", subtitle: nil)
 
         case .running where !webReady:
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("Waiting for http://127.0.0.1:\(process.port)…")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(32)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            LoadingOverlay(
+                title: "Waiting for http://\(process.port)…",
+                subtitle: nil
+            )
 
         case .failed(let reason):
-            VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.orange)
-                Text("dsh failed to start")
-                    .font(.headline)
-                Text(reason)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-                if !process.stderrTail.isEmpty {
-                    ScrollView {
-                        Text(process.stderrTail)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                            .padding(8)
-                    }
-                    .frame(maxHeight: 200)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    .padding(.horizontal, 8)
-                }
-                HStack(spacing: 12) {
-                    Button("Restart") {
-                        Task { await process.restart() }
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    Button("Quit") {
-                        NSApp.terminate(nil)
-                    }
-                    .keyboardShortcut(.cancelAction)
-                }
-            }
-            .padding(32)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            FailedOverlay(
+                reason: reason,
+                stderrTail: process.stderrTail,
+                onRestart: {
+                    Task { await process.restart() }
+                },
+                onQuit: { NSApp.terminate(nil) }
+            )
 
         case .running, .exited:
             EmptyView()
@@ -159,20 +118,6 @@ struct ContentView: View {
         if case .failed = state {
             webReady = false
             overlayHidden = false
-        }
-    }
-}
-
-private extension ContentView {
-    /// Poll the dsh UI for the streaming indicator.
-    /// Returns true when at least one `[data-streaming="true"]` element exists.
-    static func isAgentStreaming(_ wv: WKWebView) async -> Bool {
-        let js = "document.querySelector('[data-streaming=\"true\"]') !== null"
-        do {
-            let result = try await wv.evaluateJavaScript(js)
-            return (result as? Bool) ?? false
-        } catch {
-            return false
         }
     }
 }
