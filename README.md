@@ -50,26 +50,6 @@ open /Applications/DshDesktop.app
 
 未知参数会被静默忽略（这样测试运行器可以传 `--test-bundle-path` 等）。
 
-### DshLocator 查找策略（按顺序）
-
-1. `zsh -l -c "...source ~/.zshrc; command -v dsh"`（login + interactive 配置）
-2. `bash -l -c "...source ~/.bashrc; command -v dsh"`
-3. `zsh -l -c "command -v dsh"`（仅 login）
-4. `bash -l -c "command -v dsh"`
-5. `npm config get prefix` + 检查 `<prefix>/bin/dsh`（Node 感知，不依赖 shell init）
-6. `env which dsh`（兜底）
-
-全部失败时，wrapper 会弹出友好的「dsh not found」提示并附安装说明。用 `--dsh-path <abs>` 可跳过以上所有步骤。
-
-## 设置
-
-`Cmd+,` 打开。所有值持久化到 `UserDefaults`。
-
-- **Server** — 端口（带 Apply 按钮；需重启 dsh 生效）
-- **Notifications** — 开关「Show notification when dsh finishes」（dsh 完成响应时弹横幅）
-
-> 说明：轮询间隔滑块、窗口隐藏暂停轮询、以及基于 WebKit 的性能监控这几个低价值开关已移除。wrapper 现在只保留「轮询 dsh 的忙碌/空闲指示器、在完成时发通知」这一条链路，通知权限在首次运行时向 macOS 申请。
-
 ## 代码里的「设计模式」
 
 | 模式 | 位置 |
@@ -89,13 +69,6 @@ open /Applications/DshDesktop.app
 swift test                          # 64 个测试，10 个 suite
 swift test -Xswiftc -warnings-as-errors
 ```
-
-## 已知限制
-
-- **无 Sparkle 自动更新** — 仅 ad-hoc 签名。要在自己机器之外分发，需要用 Developer ID 签名并接入 Sparkle。
-- **未公证 (notarization)** — 新机器首次运行需右键 → 打开。
-- **不支持多实例** — 有意为之。若需两个 wrapper（例如对比 dsh 版本），请在另一个用户会话里再开一份。
-- **dsh 插件的 CPU 无法从 wrapper 直接控制** — 若怀疑某个插件吃 CPU，用 dsh 本身的排查手段（性能监视已移除）。
 
 ## License
 
