@@ -134,22 +134,10 @@ public final class DshProcess: ObservableObject {
         // The wrapper may be finding the wrong dsh via the login shell
         // (e.g. the published npm-global one vs the user's local build).
         let exePath = self.executable.path
-        Log.app.info("spawning dsh:")
-        Log.app.info("  executable: \(exePath)")
-        Log.app.info("  arguments: \(args)")
-
-        // Inject the bundled dsh plugin(s) as a patch file. This is
-        // what tells dsh to load our background-throttle TypeScript
-        // module alongside its own plugins.
-        if let patchURL = DshPlugins.writeBackgroundThrottlePatch() {
-            pluginPatchURL = patchURL
-            args.append(contentsOf: ["--patch", patchURL.path])
-            Log.app.info("dsh plugin patch: \(patchURL.path)")
-        } else {
-            Log.app.notice("dsh plugin patch not available (no bundled plugins); running dsh without patch")
-        }
-
+        Log.app.error("spawning dsh: executable=\(exePath)")
+        Log.app.error("spawning dsh: arguments=\(args)")
         proc.arguments = args
+
         // Merge the wrapper's minimal GUI env with the user's full
         // login-shell env. The wrapper is launched from Finder/Dock with
         // PATH=/usr/bin:/bin:/usr/sbin:/sbin; that misses node and any
@@ -163,11 +151,29 @@ public final class DshProcess: ObservableObject {
             for (key, value) in userEnv {
                 env[key] = value
             }
-            Log.app.info("merged login-shell env into spawn env (\(userEnv.count) keys)")
+            Log.app.error("spawning dsh: merged login-shell env (\(userEnv.count) keys)")
         } else {
-            Log.app.notice("could not read login-shell env; spawn env is wrapper's minimal PATH")
+            Log.app.error("spawning dsh: could not read login-shell env — using wrapper's minimal env")
         }
         proc.environment = env
+
+        // Dump PATH and a few critical vars at error level so they
+        // survive the user's `log show` default filter (which drops
+        // info/debug). Helps diagnose "wrapper spawns dsh but dsh errors"
+        // issues without asking the user for a repro.
+        if let path = env["PATH"] {
+            Log.app.error("spawning dsh: PATH=\(path)")
+        }
+        if let home = env["HOME"] {
+            Log.app.error("spawning dsh: HOME=\(home)")
+        }
+        if let nodePath = env["NODE_PATH"] {
+            Log.app.error("spawning dsh: NODE_PATH=\(nodePath)")
+        }
+        // Dsh looks at DSH_HOME too
+        if let dshHome = env["DSH_HOME"] {
+            Log.app.error("spawning dsh: DSH_HOME=\(dshHome)")
+        }
 
         let errPipe = Pipe()
         proc.standardError = errPipe
@@ -178,7 +184,9 @@ public final class DshProcess: ObservableObject {
         readStderr(errPipe)
 
         // terminationHandler is called on a background thread;
-        // hop to MainActor before mutating state.
+        // hop to MainActor before mutating state. Log dsh's stderr at
+        // error level so it survives the user's log filter — that's the
+        // actual diagnostic information they need.
         proc.terminationHandler = { [weak self] p in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -186,7 +194,14 @@ public final class DshProcess: ObservableObject {
                     Log.dsh.error("dsh killed by signal")
                     self.state = .failed("dsh terminated by signal")
                 } else if p.terminationStatus != 0 {
+                    // Dump whatever dsh said on stderr — this is the
+                    // actual error message dsh emitted.
+                    let stderr = self.stderrTail
                     Log.dsh.error("dsh exited with code \(p.terminationStatus)")
+                    if !stderr.isEmpty {
+                        Log.dsh.error("dsh stderr (\(stderr.count) chars):\n\(stderr)")
+                    }
+                    self.state = .failed("dsh exited with code \(p.terminationStatus)")
                     self.state = .failed("dsh exited with code \(p.terminationStatus)")
                 } else {
                     Log.dsh.info("dsh exited cleanly")
