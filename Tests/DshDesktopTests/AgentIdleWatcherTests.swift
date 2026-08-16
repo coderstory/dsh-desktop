@@ -18,6 +18,7 @@ struct AgentIdleWatcherTests {
     private func makeWatcher(
         pollInterval: TimeInterval = 0.05,
         cooldown: TimeInterval = 0.0,
+        confirmationDelay: TimeInterval = 0.0,
         initialBusy: Bool = false
     ) -> (watcher: AgentIdleWatcher, setBusy: @MainActor (Bool) -> Void, captured: NotificationLog) {
         var busy = initialBusy
@@ -25,6 +26,7 @@ struct AgentIdleWatcherTests {
         let watcher = AgentIdleWatcher(
             pollInterval: pollInterval,
             cooldown: cooldown,
+            idleConfirmationDelay: confirmationDelay,
             evaluator: { busy },
             notify: { title, body in captured.append((title, body)) }
         )
@@ -131,6 +133,35 @@ struct AgentIdleWatcherTests {
         #expect(watcher.state == .idle)
         #expect(watcher.lastNotifiedAt == nil)
         watcher.stop()
+    }
+
+    /// A brief idle gap (the reported false positive: probe reads idle between
+    /// tool calls / during reasoning) must NOT fire — idle must persist across
+    /// `idleConfirmationDelay` first.
+    @Test func idleGap_busyIdleBusy_doesNotFireNotification() async throws {
+        let (watcher, setBusy, captured) = makeWatcher(
+            cooldown: 0, confirmationDelay: 0.3, initialBusy: true)
+        watcher.start()
+        try await Task.sleep(for: .milliseconds(120))  // → busy
+        // Brief idle gap well under the 0.3s confirmation delay, then busy.
+        setBusy(false)
+        try await Task.sleep(for: .milliseconds(120))  // idle, but not long enough
+        setBusy(true)                                  // back to busy, settle reset
+        try await Task.sleep(for: .milliseconds(120))  // → busy
+        watcher.stop()
+        #expect(captured.items.isEmpty, "a transient idle gap must not notify")
+    }
+
+    /// Idle that genuinely persists past the confirmation delay fires.
+    @Test func sustainedIdle_persistsAcrossConfirmationDelay_fires() async throws {
+        let (watcher, setBusy, captured) = makeWatcher(
+            cooldown: 0, confirmationDelay: 0.2, initialBusy: true)
+        watcher.start()
+        try await Task.sleep(for: .milliseconds(120))  // → busy
+        setBusy(false)                                 // idle persists...
+        try await Task.sleep(for: .milliseconds(400))  // ...past the 0.2s delay
+        watcher.stop()
+        #expect(captured.items.count == 1, "sustained idle should fire the notification")
     }
 
     @Test func replaceEvaluator_wiresNewClosure() async throws {

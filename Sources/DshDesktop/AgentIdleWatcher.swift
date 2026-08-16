@@ -21,20 +21,38 @@ public final class AgentIdleWatcher: ObservableObject {
     public let pollInterval: TimeInterval
 
     private let cooldown: TimeInterval
+    /// Minimum time an idle sample must persist before the "finished
+    /// responding" notification fires. The probe can briefly read idle
+    /// between tool calls / during reasoning gaps while dsh is still working
+    /// (it only sees `data-streaming=true` while markdown is actively
+    /// streaming); a true finish must survive this settle window.
+    private let idleConfirmationDelay: TimeInterval
     private var evaluator: Evaluator
     private let notify: (String, String) async -> Void
     private let isNotificationsEnabled: () -> Bool
     private var task: Task<Void, Never>?
+    /// When the current idle run began (set on the first idle sample after a
+    /// busy read). Reset to nil on any busy sample.
+    private var idleSince: Date?
+    /// True once any busy sample has been observed. The completion
+    /// notification is only meaningful after an agent started running, so a
+    /// session that opened straight into idle must not fire.
+    private var everBusy: Bool = false
+    /// Whether the current idle episode already fired, so we don't re-fire on
+    /// later polls once the confirmation window has passed.
+    private var firedForEpisode: Bool = false
 
     public init(
         pollInterval: TimeInterval = 5.0,
         cooldown: TimeInterval = 3.0,
+        idleConfirmationDelay: TimeInterval = 3.0,
         evaluator: @escaping Evaluator,
         notify: @escaping (String, String) async -> Void = Notifications.notify,
         isNotificationsEnabled: @escaping () -> Bool = { Preferences.shared.notificationsEnabled }
     ) {
         self.pollInterval = pollInterval
         self.cooldown = cooldown
+        self.idleConfirmationDelay = max(0, idleConfirmationDelay)
         self.evaluator = evaluator
         self.notify = notify
         self.isNotificationsEnabled = isNotificationsEnabled
@@ -55,6 +73,9 @@ public final class AgentIdleWatcher: ObservableObject {
     public func reset() {
         state = .idle
         lastNotifiedAt = nil
+        idleSince = nil
+        everBusy = false
+        firedForEpisode = false
     }
 
     public func replaceEvaluator(_ newEvaluator: @escaping Evaluator) {
@@ -73,11 +94,32 @@ public final class AgentIdleWatcher: ObservableObject {
     private func tick() async {
         let isBusy = await evaluator()
         let newState: State = isBusy ? .busy : .idle
-        guard newState != state else { return }
-        state = newState
 
-        // Fire notification only on busy → idle.
-        guard case .idle = newState else { return }
+        // Update the published state immediately on every sample so the UI
+        // overlay reflects the live busy/idle indicator.
+        if newState != state {
+            state = newState
+        }
+
+        if isBusy {
+            idleSince = nil
+            firedForEpisode = false
+            everBusy = true
+            return
+        }
+
+        // Idle sample. Record when this idle run began (once), then require
+        // it to persist for `idleConfirmationDelay` before we believe the
+        // agent really finished. A single idle gap between tool calls / during
+        // a reasoning stretch is shorter than the delay and never fires.
+        if idleSince == nil {
+            idleSince = Date()
+        }
+        // Never notify if we never observed the agent working.
+        guard everBusy else { return }
+        // Have we confirmed (persisted long enough) and not already fired?
+        guard !firedForEpisode else { return }
+        guard Date().timeIntervalSince(idleSince!) >= idleConfirmationDelay else { return }
 
         if let last = lastNotifiedAt,
            Date().timeIntervalSince(last) < cooldown {
@@ -88,7 +130,9 @@ public final class AgentIdleWatcher: ObservableObject {
         // any new banners without affecting the cooldown clock.
         guard isNotificationsEnabled() else { return }
 
+        firedForEpisode = true
         lastNotifiedAt = Date()
+        Log.dsh.notice("idleProbe: idle persisted \(self.idleConfirmationDelay, privacy: .public)s — firing notification")
         await notify(
             String(localized: "dsh"),
             String(localized: "Agent finished responding")
