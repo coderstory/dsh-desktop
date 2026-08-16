@@ -119,8 +119,21 @@ public enum DshLocator {
         //   dsh web --port 13080          fails with --profile required
         //   dsh --profile web --port 13080 boots web profile
         //
-        // DshProcess appends `--port N` and any plugin patch afterward.
-        return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
+        // argv padding: dsh's bin.js does `process.argv.slice(2)`,
+        // expecting argv to be [node_path, bin_js_path, ...user_args]
+        // when launched via shell shebang. Foundation's Process API
+        // does NOT prepend the executable to argv — it passes
+        // `arguments` verbatim. So we pad with 2 placeholders so
+        // slice(2) lands on the user args the same way as Terminal.
+        //
+        // DshProcess appends `--port N` (and any plugin patch)
+        // afterward. Final argv: ['x', 'x', 'dsh', '--profile', 'web',
+        // '--port', 'N'] (7 elements); slice(2) =
+        // ['dsh', '--profile', 'web', '--port', 'N'] (5 elements).
+        // commander sees argv[0..1]='x','x' as program-name tokens,
+        // then parses '--profile' as parent option with value 'web'.
+        // options.profile = 'web', parent's check passes.
+        return Location(executablePath: path, arguments: ["x", "x", "dsh", "--profile", "web"])
     }
 }
 
