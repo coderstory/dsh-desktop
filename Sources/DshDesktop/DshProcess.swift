@@ -110,8 +110,71 @@ public final class DshProcess: ObservableObject {
     }
 
     public func restart() async {
+        // Owned mode: normal stop + start.
+        guard ownsChild else {
+            await restartExternal()
+            return
+        }
         await stop()
         await start()
+    }
+
+    /// External mode has no owned child (stop()/start() are no-ops), but the
+    /// user asked for a restart regardless. Locate whatever is listening on
+    /// our port, shut it down, then adopt ownership and spawn a fresh dsh
+    /// ourselves so future menu Restarts go through the normal owned path.
+    private func restartExternal() async {
+        Log.dsh.info("DshProcess: external-mode restart on port \(self.port)")
+
+        guard let pids = await listeningPIDs(for: port), !pids.isEmpty else {
+            Log.dsh.notice("DshProcess: no process listening on \(self.port) — spawning fresh")
+            ownsChild = true
+            await start()
+            return
+        }
+
+        for pid in pids {
+            Log.dsh.notice("DshProcess: terminating external pid \(pid, privacy: .public)")
+            kill(pid, SIGTERM)
+        }
+
+        // Give the external process time to exit, then escalate to SIGKILL.
+        let deadline = Date().addingTimeInterval(2.0)
+        while Date() < deadline {
+            if !(await isPortListening(port: port)) { break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        if await isPortListening(port: port) {
+            for pid in pids {
+                Log.dsh.notice("DshProcess: escalating to SIGKILL pid \(pid, privacy: .public)")
+                kill(pid, SIGKILL)
+            }
+        }
+
+        // The old dsh is down; we own the relaunch from here on.
+        ownsChild = true
+        await start()
+    }
+
+    /// PIDs currently holding the HTTP listen socket on `port` (via lsof).
+    private func listeningPIDs(for port: Int) async -> [pid_t]? {
+        let result = await ShellRunner.run("/usr/sbin/lsof", ["-tiTCP:\(port)", "-sTCP:LISTEN"])
+        guard result.success else { return nil }
+        return result.output
+            .split(whereSeparator: \.isNewline)
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            .map(pid_t.init)
+    }
+
+    /// True if `port` currently accepts HTTP connections.
+    private func isPortListening(port: Int) async -> Bool {
+        guard let url = URL(string: "http://127.0.0.1:\(port)/") else { return true }
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            return (response as? HTTPURLResponse) != nil
+        } catch {
+            return false
+        }
     }
 
     // MARK: - Private
