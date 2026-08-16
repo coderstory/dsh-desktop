@@ -29,7 +29,12 @@ public final class DshProcess: ObservableObject {
     public private(set) var ownsChild: Bool
     private var process: Process?
     private var stderrPipe: Pipe?
-    private var pluginPatchURL: URL?
+    // Reserved for future plugin loader. Was previously used to point at
+    // the temporary cordis patch file generated for bg-throttle. With
+    // the bg-throttle plugin removed, this is a no-op slot kept so a
+    // future plugin-loader implementation has a hook without re-touching
+    // the file shape.
+    private var pluginPatchURL: URL? = nil
     private let stderrCap = 64 * 1024  // 64 KiB
 
     public init(executable: URL, arguments: [String], port: Int, ownsChild: Bool = true) {
@@ -72,10 +77,6 @@ public final class DshProcess: ObservableObject {
             return
         }
         guard let proc = process, proc.isRunning else {
-            // Even if the process already exited, the plugin patch file
-            // we created at launch is still on disk; clean it up.
-            DshPlugins.cleanup(pluginPatchURL)
-            pluginPatchURL = nil
             state = .exited
             return
         }
@@ -92,8 +93,6 @@ public final class DshProcess: ObservableObject {
             #endif
         }
         await waitForExit(of: proc)
-        DshPlugins.cleanup(pluginPatchURL)
-        pluginPatchURL = nil
         state = .exited
     }
 
@@ -121,8 +120,7 @@ public final class DshProcess: ObservableObject {
         let proc = Process()
         proc.executableURL = executable
 
-        // Compose the argv: caller-supplied args + --port + (optional)
-        // --patch pointing at the bundled background-throttle plugin.
+        // Compose the argv: caller-supplied args + --port.
         // We append --port to ensure dsh binds the user's chosen port
         // regardless of the caller's arguments.
         var args = arguments

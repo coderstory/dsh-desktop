@@ -47,12 +47,11 @@ Web UI (`dsh web`) 装进一个 `WKWebView`。macOS 13+ → 25+，Swift 6 严格
   ```
   /Users/coderstory/CodeSource/
   ├── dsh-desktop/                  # 这个仓库（wrapper）
-  └── plugins/                     # 兄弟目录
-      └── background-throttle/      # dsh 插件（独立 repo）
+  └── plugins/                     # 兄弟目录（用户自己管理 dsh 插件）
   ```
-- **绑定方式**：`scripts/bundle.sh` 从 `../plugins/background-throttle/` 复制插件到
-  `Contents/Resources/dsh-plugins/`，wrapper 启动时通过 `--patch` 加载。
-  设置 `$DSHDESKTOP_PLUGINS_DIR` env 可指定其他位置。
+
+> **Wrapper 不再绑定 dsh 插件**（自 `[Unreleased]` 起）。用户自己
+> 管理 `~/.dsh/profiles/web/` 下的 dsh 插件。
 
 ## 跑命令
 
@@ -80,11 +79,10 @@ Sources/DshDesktop/
 ├── ContentView.swift         # 薄 view
 ├── DSHWebView.swift          # NSViewRepresentable
 ├── DshProcess.swift          # 状态机 + spawn 生命周期
-├── DshPlugins.swift          # bg-throttle patch 生成
 ├── DshHealthCheck.swift      # 端口探测
 ├── DshLocator.swift          # 找 dsh binary（login shell fallback）
 ├── DshHealthMonitor.swift    # 15s 端口 liveness poll
-├── DshPlugins.swift          # cordis.yml 生成 + 资源查找
+├── HotkeyRouter.swift        # Cmd+C/V/X/A → WKWebView forwarder
 ├── AgentIdleWatcher.swift    # DOM 轮询 + 状态机
 ├── LaunchAtLogin.swift       # SMAppService
 ├── LaunchConfig.swift        # CLI parser
@@ -102,12 +100,9 @@ Sources/DshDesktop/
     ├── en.lproj/Localizable.strings
     ├── zh-Hans.lproj/Localizable.strings
     ├── AppIcon.svg / .icns
-    ├── MenuBarIconTemplate.svg / .png / @2x.png
-    └── dsh-plugins/background-throttle/   # 打包时从 ../plugins/ 复制
+    └── MenuBarIconTemplate.svg / .png / @2x.png
 
-dsh-plugins/background-throttle/   # 兄弟目录，dsh 插件源码
-├── src/index.ts              # v2 插件
-├── cordis.yml
+# 没有 DshPlugins.swift / 没有 Resources/dsh-plugins/ —— 用户自己管 dsh 插件
 └── README.md
 
 scripts/
@@ -136,7 +131,6 @@ swift test 2>&1 | tail -3
 - `AgentIdleWatcher` (14) — DOM 轮询 + 状态机
 - `LaunchAtLogin` (5) — SMAppService toggle
 - `ShellRunner` (4) — async shell exec
-- `DshPlugins` (6) — patch YAML 格式 + temp 文件
 - `PerformanceMonitor` (8) — 生命周期 + Codable
 - `DshHealthMonitor` (6) — 端口 liveness
 - `SmokeTests` (1) — basic compile check
@@ -199,7 +193,7 @@ swift test 2>&1 | tail -3
 
 ```
 Build:  ~7秒  (swift build -c release)
-Test:   ~0.7秒  (76 tests, 13 suites)
+Test:   ~0.7秒  (77 tests, 13 suites)
 Bundle: ~2秒
 Install: copy 操作
 ```

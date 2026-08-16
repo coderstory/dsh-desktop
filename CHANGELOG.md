@@ -5,6 +5,16 @@ All notable changes to DshDesktop are documented here. Versions follow
 
 ## [Unreleased]
 
+### Removed
+- **Bundled `background-throttle` dsh plugin** — wrapper no longer
+  ships a TypeScript plugin. The user manages their dsh plugin
+  configuration in `~/.dsh/` directly. Removed `Sources/DshDesktop/DshPlugins.swift`,
+  `Tests/DshDesktopTests/DshPluginsTests.swift`, and the plugin-lookup
+  block in `scripts/bundle.sh` (no more `DSHDESKTOP_PLUGINS_DIR` /
+  `../plugins` / `dsh-plugins/` discovery). No user-facing change in
+  default behavior — the plugin was an opt-in perf improvement that
+  no one was using.
+
 ### Added
 - **Browser performance monitor** (`Preferences.enablePerformanceMonitoring`,
   default off) — polls dsh's UI every 10s via JS for long tasks

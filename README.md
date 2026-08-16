@@ -13,7 +13,7 @@ and lives in the menu bar so the wrapper stays out of your way.
 - **Single instance** — launching a second copy focuses the existing window and exits.
 - **Auto-spawn or reuse** — if dsh is already serving on the configured port, the wrapper connects without spawning; otherwise it spawns dsh itself.
 - **Health monitoring** — if dsh dies mid-session, the wrapper detects the dead port and surfaces a "dsh stopped responding" overlay with a Restart button.
-- **Bundled dsh plugin: `background-throttle`** — the wrapper auto-loads a TypeScript plugin (sourced from the sibling `../plugins/background-throttle/` directory) that pauses all `setInterval` / `setTimeout` calls when the dsh WebView is hidden (user switches to another app or browser tab) and re-schedules them when visible. This is the single biggest CPU win when you have many dsh plugins installed. The plugin lives in a sibling repo, not inside this one — the wrapper picks it up at build time and synthesizes the `--patch cordis.yml` that loads it.
+- **Bundled dsh plugin: `background-throttle`** — REMOVED. Wrapper no longer ships a bundled dsh plugin; manage your own dsh plugins in `~/.dsh/profiles/web/`.
 - **System notifications** — fires a macOS banner when the dsh agent finishes responding to your last prompt (toggled in Settings).
 - **Polling interval** — 1–60s slider in Settings; pauses automatically when the window is hidden.
 - **Performance monitor** (opt-in) — detects long-running tasks (>100ms) inside dsh's UI, lists the active plugins from the DOM, and shows the data in the menu bar / a detailed alert. Useful when a dsh plugin is eating CPU.
@@ -108,7 +108,6 @@ Sources/DshDesktop/
 ├── AgentIdleWatcher.swift    # DOM stream poll + state machine + cooldown
 ├── LaunchAtLogin.swift       # SMAppService.mainApp toggle
 ├── LaunchConfig.swift        # CLI parser (Sendable)
-├── DshPlugins.swift          # background-throttle patch generator (DshPlugins)
 ├── Notifications.swift       # UNUserNotificationCenter wrapper
 ├── Preferences.swift         # UserDefaults persistence + sanitization
 ├── PreferencesView.swift     # Settings scene UI
@@ -121,19 +120,7 @@ Sources/DshDesktop/
     ├── zh-Hans.lproj/Localizable.strings
     ├── AppIcon.svg / .icns
     ├── MenuBarIconTemplate.svg / .png / @2x.png
-    └── dsh-plugins/background-throttle/   # bundled dsh plugin (TS, copied at build time)
-```
-
-The bundled dsh plugin lives in a **sibling repo**, not inside this
-one, so the wrapper picks it up from `../plugins/background-throttle/`
-(overrideable via `$DSHDESKTOP_PLUGINS_DIR`):
-
-```
-../plugins/
-└── background-throttle/         # the dsh plugin
-    ├── src/index.ts              # the plugin
-    ├── cordis.yml               # standalone-use overlay
-    └── README.md
+    └── (no bundled dsh plugins — manage them in your dsh install)
 ```
 ```
 
