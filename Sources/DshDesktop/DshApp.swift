@@ -268,8 +268,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // empties the contents but does NOT remove the menu itself
             // (AppKit auto-adds Help + Window menus based on a windowed
             // app). Remove them from the live NSApp.mainMenu after SwiftUI
-            // has finished building the menu bar.
+            // has finished building the menu bar. AppKit can re-insert the
+            // auto menus whenever the SwiftUI scene body rebuilds the menu
+            // bar (e.g. on window activation or a @StateObject change), so a
+            // one-shot prune is not enough: observe menu additions and prune
+            // on every change.
             Self.pruneAutoMenus()
+            Self.armPruneObserver()
         }
     }
 
@@ -306,10 +311,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Also log each item on its own line — joined strings lose
         // privacy metadata (each interpolation needs its own
         // privacy: .public spec for the redaction to be opted out).
+        // `.notice` (not `.debug`) so it survives to the persisted store and
+        // `log show` can confirm the menu state without a live stream.
         for (idx, item) in mainMenu.items.enumerated() {
             let title = item.submenu?.title ?? item.title
             let kind = item.submenu != nil ? "submenu" : "top-level"
-            Log.app.debug("pruneAutoMenus: BEFORE  menu[\(idx, privacy: .public)] (\(kind, privacy: .public)) = \(title, privacy: .public)")
+            Log.app.notice("pruneAutoMenus: BEFORE  menu[\(idx, privacy: .public)] (\(kind, privacy: .public)) = \(title, privacy: .public)")
         }
 
         let dropTitles: Set<String> = [
@@ -321,13 +328,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             keepGoing = false
             for (index, item) in mainMenu.items.enumerated() {
                 if let title = item.submenu?.title, dropTitles.contains(title) {
-                    Log.app.debug("pruneAutoMenus: removing submenu \(title, privacy: .public)")
+                    Log.app.notice("pruneAutoMenus: removing submenu \(title, privacy: .public)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
                 }
                 if dropTitles.contains(item.title) {
-                    Log.app.debug("pruneAutoMenus: removing top-level \(item.title, privacy: .public)")
+                    Log.app.notice("pruneAutoMenus: removing top-level \(item.title, privacy: .public)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
@@ -337,12 +344,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Log AFTER for confirmation.
         let afterTitles = mainMenu.items.map { ($0.submenu?.title ?? $0.title) as String }
         let joinedAfter = afterTitles.joined(separator: ", ")
-        Log.app.debug("pruneAutoMenus: AFTER — \(joinedAfter, privacy: .public)")
+        Log.app.notice("pruneAutoMenus: AFTER — \(joinedAfter, privacy: .public)")
         for (idx, item) in mainMenu.items.enumerated() {
             let title = item.submenu?.title ?? item.title
             let kind = item.submenu != nil ? "submenu" : "top-level"
             Log.app.debug("pruneAutoMenus: AFTER   menu[\(idx, privacy: .public)] (\(kind, privacy: .public)) = \(title, privacy: .public)")
         }
+    }
+
+    /// Observe additions to `NSApp.mainMenu` and prune again whenever AppKit
+    /// inserts one of the auto menus (Help / Window / View). A one-shot prune
+    /// at launch is unreliable because SwiftUI / AppKit can rebuild the menu
+    /// bar later (window activation, scene re-evaluation) and re-insert them.
+    /// Firing on `NSMenu.didAddItemNotification` removes them the moment they
+    /// come back, with no polling.
+    @MainActor
+    static func armPruneObserver() {
+        guard NSApp.mainMenu != nil else { return }
+        let center = NotificationCenter.default
+        // macOS posts NSMenu.didAddItemNotification when items are inserted
+        // into a menu; posting an object is always nil for this one, so match
+        // on the userInfo's menu instead.
+        let prune: @Sendable (Notification) -> Void = { _ in
+            MainActor.assumeIsolated {
+                Self.pruneAutoMenus()
+            }
+        }
+        _ = center.addObserver(
+            forName: NSMenu.didAddItemNotification,
+            object: nil,
+            queue: .main,
+            using: prune
+        )
     }
 
     @MainActor
