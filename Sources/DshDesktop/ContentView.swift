@@ -115,7 +115,7 @@ struct ContentView: View {
             Log.ui.notice("[startFlow] spawn failed — state did not reach .running")
             return
         }
-        Log.ui.notice("[startFlow] dsh process spawned (pid=\(process.processIdentifier)); waiting up to 10s for port \(port)")
+        Log.ui.notice("[startFlow] dsh process spawned; waiting up to 10s for port \(port)")
 
         // Wait up to 10s for dsh to bind the port.
         let ok = await DshHealthCheck.waitUntilReady(port: port, timeout: 10.0)
