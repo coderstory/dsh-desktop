@@ -128,6 +128,15 @@ public final class DshProcess: ObservableObject {
         var args = arguments
         args.append(contentsOf: ["--port", String(port)])
 
+        // Verbose: log exactly what we're about to spawn so the user
+        // can see which dsh binary and which argv in Console.app /
+        // `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
+        // The wrapper may be finding the wrong dsh via the login shell
+        // (e.g. the published npm-global one vs the user's local build).
+        Log.app.info("spawning dsh:")
+        Log.app.info("  executable: \(executable.path)")
+        Log.app.info("  arguments: \(args)")
+
         // Inject the bundled dsh plugin(s) as a patch file. This is
         // what tells dsh to load our background-throttle TypeScript
         // module alongside its own plugins.
