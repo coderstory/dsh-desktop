@@ -26,11 +26,21 @@ public enum Notifications {
 
     /// Request `.alert` + `.sound` authorization. Returns whether granted.
     public static func requestAuthorization() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        // Record the authorization status up front so we can tell a
+        // "denied / already decided" state from a genuine call failure.
+        let settings = await center.notificationSettings()
+        Log.app.info("notification: current authorizationStatus=\(settings.authorizationStatus.rawValue, privacy: .public)")
         do {
-            return try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .sound, .badge])
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            Log.app.info("notification: requestAuthorization granted=\(granted, privacy: .public)")
+            return granted
         } catch {
-            Log.errors.error("notification authorization request failed: \(error.localizedDescription)")
+            Log.errors.error("notification authorization request failed: \(error.localizedDescription, privacy: .public)")
+            // Re-read status so the log shows whether the center decided
+            // (denied) vs. we genuinely failed to ask.
+            let after = await center.notificationSettings()
+            Log.errors.error("notification: post-request authorizationStatus=\(after.authorizationStatus.rawValue, privacy: .public)")
             return false
         }
     }

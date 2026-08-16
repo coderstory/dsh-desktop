@@ -248,6 +248,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
+        // Install the foreground-delivery delegate and ask for notification
+        // permission up front. DshDesktop is a normal windowed app whose
+        // window stays up while the agent runs; the delegate makes banners
+        // appear even when frontmost, and asking here guarantees the system
+        // auth prompt actually shows (the earlier .task placement never
+        // surfaced it). Nested Task keeps it non-blocking — the wrapper
+        // must boot even if the user dismisses the prompt.
+        Notifications.installDelegate()
+        Task { await Notifications.requestAuthorization() }
         // Hook all windows' delegate to detect close.
         DispatchQueue.main.async {
             for window in NSApp.windows {

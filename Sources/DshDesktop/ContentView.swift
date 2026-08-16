@@ -44,12 +44,11 @@ struct ContentView: View {
             }
         }
         .task {
-            // Install the foreground-delivery delegate, then request
-            // notification permission once (prompts the user).
-            // Non-blocking: we don't await the result — if denied,
-            // Notifications.notify becomes a silent no-op.
+            // Permission is requested once at app launch (AppDelegate).
+            // Belated view appear just re-installs the (idempotent)
+            // foreground-delivery delegate so banners keep showing even
+            // while the window is frontmost.
             Notifications.installDelegate()
-            Task { await Notifications.requestAuthorization() }
             await startFlow()
         }
         .onChange(of: process.state) { _, newState in
