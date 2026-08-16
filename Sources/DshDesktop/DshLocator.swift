@@ -109,13 +109,18 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        // `dsh web` is a subcommand (alias for `--profile web`).
-        // Don't pass `--profile` here — the parent command's option
-        // parser consumes it, then the `web` subcommand's
-        // `rejectParentOptions` rejects it with "error: unknown option
-        // '--profile'". Just call the `web` subcommand and pass the
-        // web-app's own options (e.g. `--port N`) as remaining args.
-        return Location(executablePath: path, arguments: ["dsh", "web"])
+        // Use `dsh --profile web` (NOT `dsh web` subcommand) because
+        // dsh 0.1.0-rc.6 has a bug: the parent command's greedy
+        // .argument plus enablePositionalOptions swallows `web` as a
+        // positional arg, the web subcommand never matches, and the
+        // parent action emits `error: --profile <name> is required`.
+        //
+        // Direct test of dsh's argv handling:
+        //   dsh web --port 13080          fails with --profile required
+        //   dsh --profile web --port 13080 boots web profile
+        //
+        // DshProcess appends `--port N` and any plugin patch afterward.
+        return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
     }
 }
 
