@@ -120,7 +120,9 @@ struct DshApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
-            // Hide all default menus
+            // Hide all default menus — we only ship our own (App / dsh /
+            // Quick Links). macOS otherwise shows File / Edit / View /
+            // Window / Help which add nothing for a WKWebView wrapper.
             CommandGroup(replacing: .newItem) {}
             CommandGroup(replacing: .saveItem) {}
             CommandGroup(replacing: .printItem) {}
@@ -128,6 +130,11 @@ struct DshApp: App {
             CommandGroup(replacing: .undoRedo) {}
             CommandGroup(replacing: .textEditing) {}
             CommandGroup(replacing: .help) {}
+            // Window menu group (Minimize / Zoom / Bring All to Front /
+            // window list). Single-window wrapper has no use for these.
+            CommandGroup(replacing: .windowList) {}
+            CommandGroup(replacing: .windowSize) {}
+            CommandGroup(replacing: .windowArrangement) {}
 
             // App menu (About + Quit)
             CommandGroup(replacing: .appInfo) {
