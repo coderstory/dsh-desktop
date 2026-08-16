@@ -44,9 +44,11 @@ struct ContentView: View {
             }
         }
         .task {
-            // Request notification permission once (prompts the user).
+            // Install the foreground-delivery delegate, then request
+            // notification permission once (prompts the user).
             // Non-blocking: we don't await the result — if denied,
             // Notifications.notify becomes a silent no-op.
+            Notifications.installDelegate()
             Task { await Notifications.requestAuthorization() }
             await startFlow()
         }
