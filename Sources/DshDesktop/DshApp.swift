@@ -276,14 +276,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// Remove the Help and Window menus that AppKit auto-adds to every
-    /// windowed macOS app. SwiftUI's `CommandGroup(replacing: ...)` only
-    /// empties their contents, so we walk `NSApp.mainMenu` and delete
-    /// them by title.
+    /// Remove the menus that AppKit auto-adds to every windowed macOS app
+    /// but the wrapper doesn't want to expose. SwiftUI's
+    /// `CommandGroup(replacing: ...)` only empties their contents, so
+    /// we walk `NSApp.mainMenu` and delete the unwanted top-level items
+    /// by title.
+    ///
+    /// Match both English ("Help" / "Window" / "View") and Chinese
+    /// ("帮助" / "窗口" / "显示" / "视图") system-translated titles, since
+    /// the user's system locale drives the auto-add labels.
     @MainActor
     static func pruneAutoMenus() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        let dropTitles: Set<String> = ["Help", "Window"]
+        let dropTitles: Set<String> = [
+            "Help", "Window", "View",
+            "帮助", "窗口", "显示", "视图",
+        ]
         var keepGoing = true
         while keepGoing {
             keepGoing = false
