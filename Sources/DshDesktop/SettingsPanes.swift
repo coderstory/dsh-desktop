@@ -24,11 +24,11 @@ struct GeneralSettingsPane: View {
             Section("Server") {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("TCP port")
-                        TextField("Port", text: $portText)
+                        Text(String(localized: "TCP port"))
+                        TextField(String(localized: "Port"), text: $portText)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 100)
-                        Button("Apply") {
+                        Button(String(localized: "Apply")) {
                             if let p = Int(portText), p > 0, p < 65536 {
                                 prefs.port = p
                             } else {
@@ -38,7 +38,7 @@ struct GeneralSettingsPane: View {
                         .controlSize(.small)
                         .disabled(parsedPort == nil || parsedPort == prefs.port)
                     }
-                    Text("dsh listens on this port. Restart dsh (dsh menu) to apply.")
+                    Text(String(localized: "dsh listens on this port. Restart dsh (dsh menu) to apply."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -47,8 +47,8 @@ struct GeneralSettingsPane: View {
             Section("Notifications") {
                 Toggle(isOn: $prefs.notificationsEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Show notification when dsh finishes")
-                        Text("A macOS banner appears when the dsh agent finishes its response.")
+                        Text(String(localized: "Show notification when dsh finishes"))
+                        Text(String(localized: "A macOS banner appears when the dsh agent finishes its response."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -68,14 +68,14 @@ struct GeneralSettingsPane: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 36, alignment: .trailing)
                     }
-                    Text("How often DshDesktop checks the dsh UI for the busy/idle indicator.")
+                    Text(String(localized: "How often DshDesktop checks the dsh UI for the busy/idle indicator."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Toggle(isOn: $prefs.pausePollingWhenHidden) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Pause polling when window is hidden")
-                        Text("Stops the DOM polling loop while the main window is closed. Resumes when you reopen.")
+                        Text(String(localized: "Pause polling when window is hidden"))
+                        Text(String(localized: "Stops the DOM polling loop while the main window is closed. Resumes when you reopen."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -86,8 +86,8 @@ struct GeneralSettingsPane: View {
             Section("Diagnostics") {
                 Toggle(isOn: $prefs.enablePerformanceMonitoring) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Enable browser performance monitor")
-                        Text("Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins.")
+                        Text(String(localized: "Enable browser performance monitor"))
+                        Text(String(localized: "Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -96,7 +96,7 @@ struct GeneralSettingsPane: View {
             }
 
             Section {
-                Button("Reset to Defaults") {
+                Button(String(localized: "Reset to Defaults")) {
                     prefs.resetToDefaults()
                     portText = String(prefs.port)
                 }
@@ -128,8 +128,8 @@ struct SystemSettingsPane: View {
             Section("Login") {
                 Toggle(isOn: $launchAtLogin) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Launch DshDesktop at login")
-                        Text("Automatically start DshDesktop when you sign in. Uses macOS Launch Services (SMAppService); doesn't add a Login Item.")
+                        Text(String(localized: "Launch DshDesktop at login"))
+                        Text(String(localized: "Automatically start DshDesktop when you sign in. Uses macOS Launch Services (SMAppService); doesn't add a Login Item."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -145,8 +145,8 @@ struct SystemSettingsPane: View {
                 }
             }
 
-            Section("Reset") {
-                Button("Reset to Defaults") {
+            Section(String(localized: "Reset")) {
+                Button(String(localized: "Reset to Defaults")) {
                     prefs.resetToDefaults()
                 }
                 .controlSize(.small)
@@ -176,24 +176,24 @@ struct AboutSettingsPane: View {
                         Text(AppVersionExposed.displayString)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text("Native macOS wrapper for dsh --profile web")
+                        Text(String(localized: "Native macOS wrapper for dsh --profile web"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
 
-            Section("Links") {
-                Link("GitHub Repo",
+            Section(String(localized: "Links")) {
+                Link(String(localized: "GitHub Repo"),
                      destination: URL(string: "https://github.com/deepseek-ai/deepseek-harness")!)
-                Link("dsh 资源导航",
+                Link(String(localized: "dsh 资源导航"),
                      destination: URL(string: "https://dshfind.com/zh")!)
-                Link("Awesome dsh Plugins",
+                Link(String(localized: "Awesome dsh Plugins"),
                      destination: URL(string: "https://awesome-dsh-plugin.com/zh/")!)
             }
 
-            Section("Credits") {
-                Text("Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`.")
+            Section(String(localized: "Credits")) {
+                Text(String(localized: "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`."))
                     .foregroundStyle(.secondary)
             }
         }
