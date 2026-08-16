@@ -109,9 +109,13 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        // Single-argument launch form: the dsh binary receives
-        // `dsh web` as argv[1] (one token), letting dsh parse it.
-        return Location(executablePath: path, arguments: ["dsh web"])
+        // `dsh web` is a subcommand (alias for `--profile web`).
+        // Don't pass `--profile` here — the parent command's option
+        // parser consumes it, then the `web` subcommand's
+        // `rejectParentOptions` rejects it with "error: unknown option
+        // '--profile'". Just call the `web` subcommand and pass the
+        // web-app's own options (e.g. `--port N`) as remaining args.
+        return Location(executablePath: path, arguments: ["dsh", "web"])
     }
 }
 
