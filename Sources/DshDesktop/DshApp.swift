@@ -150,15 +150,7 @@ struct DshApp: App {
                         attributes: [.font: NSFont.systemFont(ofSize: 11)]
                     ))
                     body.append(NSAttributedString(
-                        string: "View on GitHub →",
-                        attributes: [
-                            .font: NSFont.systemFont(ofSize: 11),
-                            .link: URL(string: "https://github.com/deepseek-ai/deepseek-harness")!,
-                            .foregroundColor: NSColor.controlAccentColor
-                        ]
-                    ))
-                    body.append(NSAttributedString(
-                        string: "\n\nReleased under the MIT License.\n",
+                        string: "\nReleased under the MIT License.\n",
                         attributes: [
                             .font: NSFont.systemFont(ofSize: 10),
                             .foregroundColor: NSColor.secondaryLabelColor
