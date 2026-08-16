@@ -165,6 +165,38 @@ public final class DshProcess: ObservableObject {
         }
         proc.environment = env
 
+        // Launch dsh rooted at its profile directory. dsh resolves its
+        // plugin-bundle loader entries (cordis:include → the profile's
+        // node_modules) relative to the *current working directory*. The
+        // wrapper is launched from Finder/Dock, so its own cwd is the
+        // .app bundle / repo — from there node's ESM loader can't reach
+        // the profile's node_modules and every profile plugin import
+        // fails with ERR_MODULE_NOT_FOUND (dsh boot aborts). Chdir into
+        // the profile so plugin resolution matches a manually-launched
+        // `dsh --profile web`.
+        if let dshHome = env["DSH_HOME"], !dshHome.isEmpty {
+            proc.currentDirectoryURL = URL(fileURLWithPath: dshHome)
+                .appendingPathComponent("profiles")
+                .appendingPathComponent("web")
+        } else {
+            let home = env["HOME"] ?? NSHomeDirectory()
+            proc.currentDirectoryURL = URL(fileURLWithPath: home)
+                .appendingPathComponent(".dsh/profiles/web")
+        }
+        // Only honor the cwd if it actually exists — otherwise leave it
+        // inherited so Process doesn't fail to spawn (a nonexistent cwd
+        // aborts launch).
+        if let cwd = proc.currentDirectoryURL {
+            var isDir: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: cwd.path, isDirectory: &isDir)
+            if exists && isDir.boolValue {
+                Log.app.info("spawning dsh: cwd = \(cwd.path, privacy: .public)")
+            } else {
+                Log.app.notice("spawning dsh: cwd \(cwd.path, privacy: .public) missing — leaving inherited")
+                proc.currentDirectoryURL = nil
+            }
+        }
+
         // Dump PATH / HOME / etc. at debug level — visible only with
         // `log show ... --debug`. Keeps the user's default filter clean.
         if let path = env["PATH"] {
