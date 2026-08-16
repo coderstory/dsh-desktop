@@ -50,19 +50,6 @@ open /Applications/DshDesktop.app
 
 未知参数会被静默忽略（这样测试运行器可以传 `--test-bundle-path` 等）。
 
-## 代码里的「设计模式」
-
-| 模式 | 位置 |
-|---|---|
-| 状态机 | `DshProcess.State`（idle / starting / running / exited / failed） |
-| 策略 | `DshLocator` 依次尝试 login shell（zsh、bash）再 `env which` 兜底 |
-| 仓储 | `Preferences` 抽象 `UserDefaults` 并做输入消毒 |
-| MVVM（轻量） | `DshApp` 以 `@StateObject` 持有 `process` / `prefs` / `idleWatcher`，经 init 传给 `ContentView` |
-| 观察者 | `@Published` + SwiftUI `.onChange` 做热重载 |
-| 状态 | SwiftUI Window + Settings 窗口、菜单栏用 `NSStatusItem` |
-| Sendable | `WhichFunc`、`LoginItemProviding`、`TestHTTPServer` 标注以适配 Swift 6 严格并发 |
-| DI | `Preferences.init(defaults:)` 注入 `UserDefaults`；`LaunchConfig.current(preferences:)` 注入 prefs |
-
 ## 测试
 
 ```bash
