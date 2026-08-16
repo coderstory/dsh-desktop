@@ -134,8 +134,11 @@ public final class DshProcess: ObservableObject {
         // The wrapper may be finding the wrong dsh via the login shell
         // (e.g. the published npm-global one vs the user's local build).
         let exePath = self.executable.path
-        Log.app.error("spawning dsh: executable=\(exePath)")
-        Log.app.error("spawning dsh: arguments=\(args)")
+        // Privacy: .public opts out of os.log's automatic string
+        // interpolation redaction (which otherwise prints "<private>" in
+        // `log show` output for any dynamic value).
+        Log.app.error("spawning dsh: executable=\(exePath, privacy: .public)")
+        Log.app.error("spawning dsh: arguments=\(args, privacy: .public)")
         proc.arguments = args
 
         // Merge the wrapper's minimal GUI env with the user's full
@@ -151,7 +154,7 @@ public final class DshProcess: ObservableObject {
             for (key, value) in userEnv {
                 env[key] = value
             }
-            Log.app.error("spawning dsh: merged login-shell env (\(userEnv.count) keys)")
+            Log.app.error("spawning dsh: merged login-shell env (\(userEnv.count, privacy: .public) keys)")
         } else {
             Log.app.error("spawning dsh: could not read login-shell env — using wrapper's minimal env")
         }
@@ -159,20 +162,20 @@ public final class DshProcess: ObservableObject {
 
         // Dump PATH and a few critical vars at error level so they
         // survive the user's `log show` default filter (which drops
-        // info/debug). Helps diagnose "wrapper spawns dsh but dsh errors"
-        // issues without asking the user for a repro.
+        // info/debug). privacy: .public opts out of os.log's automatic
+        // redaction of dynamic values.
         if let path = env["PATH"] {
-            Log.app.error("spawning dsh: PATH=\(path)")
+            Log.app.error("spawning dsh: PATH=\(path, privacy: .public)")
         }
         if let home = env["HOME"] {
-            Log.app.error("spawning dsh: HOME=\(home)")
+            Log.app.error("spawning dsh: HOME=\(home, privacy: .public)")
         }
         if let nodePath = env["NODE_PATH"] {
-            Log.app.error("spawning dsh: NODE_PATH=\(nodePath)")
+            Log.app.error("spawning dsh: NODE_PATH=\(nodePath, privacy: .public)")
         }
         // Dsh looks at DSH_HOME too
         if let dshHome = env["DSH_HOME"] {
-            Log.app.error("spawning dsh: DSH_HOME=\(dshHome)")
+            Log.app.error("spawning dsh: DSH_HOME=\(dshHome, privacy: .public)")
         }
 
         let errPipe = Pipe()
@@ -197,9 +200,9 @@ public final class DshProcess: ObservableObject {
                     // Dump whatever dsh said on stderr — this is the
                     // actual error message dsh emitted.
                     let stderr = self.stderrTail
-                    Log.dsh.error("dsh exited with code \(p.terminationStatus)")
+                    Log.dsh.error("dsh exited with code \(p.terminationStatus, privacy: .public)")
                     if !stderr.isEmpty {
-                        Log.dsh.error("dsh stderr (\(stderr.count) chars):\n\(stderr)")
+                        Log.dsh.error("dsh stderr (\(stderr.count, privacy: .public) chars):\n\(stderr, privacy: .public)")
                     }
                     self.state = .failed("dsh exited with code \(p.terminationStatus)")
                     self.state = .failed("dsh exited with code \(p.terminationStatus)")
