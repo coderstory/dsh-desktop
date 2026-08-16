@@ -86,15 +86,21 @@ struct ContentView: View {
 
     private func startFlow() async {
         let port = process.port
+        // Verbose log so user can trace exactly which branch fires in
+        // Console.app (`log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`).
+        Log.ui.notice("[startFlow] ENTER port=\(port) ownsChild=\(process.ownsChild)")
         Log.ui.info("startFlow: pre-checking port \(port)")
 
         // Pre-check: if 3080 (or whatever port) is already serving, reuse
         // the externally-managed dsh — don't spawn, don't kill on quit.
+        Log.ui.notice("[startFlow] about to TCP-probe 127.0.0.1:\(port) (timeout 1.5s)")
         let alreadyUp = await DshHealthCheck.waitUntilReady(port: port, timeout: 1.5)
+        Log.ui.notice("[startFlow] TCP probe result: alreadyUp=\(alreadyUp) (true = port is serving, will reuse; false = refused, will spawn)")
         if alreadyUp {
             Log.ui.info("startFlow: port \(port) already serving; reusing existing dsh")
             process.releaseOwnership()
             await process.start()  // sets state → .running (external mode)
+            Log.ui.notice("[startFlow] branch=reuse-existing-dsh")
             withAnimation(.easeIn(duration: 0.4)) { webReady = true }
             try? await Task.sleep(for: .milliseconds(500))
             withAnimation(.easeOut(duration: 0.4)) { overlayHidden = true }
@@ -102,18 +108,25 @@ struct ContentView: View {
         }
 
         // Port not responding — spawn our own dsh.
+        Log.ui.notice("[startFlow] branch=spawn-new-dsh")
         Log.ui.info("startFlow: port \(port) refused; spawning dsh")
         await process.start()
-        guard case .running = process.state else { return }
+        guard case .running = process.state else {
+            Log.ui.notice("[startFlow] spawn failed — state did not reach .running")
+            return
+        }
+        Log.ui.notice("[startFlow] dsh process spawned (pid=\(process.processIdentifier)); waiting up to 10s for port \(port)")
 
         // Wait up to 10s for dsh to bind the port.
         let ok = await DshHealthCheck.waitUntilReady(port: port, timeout: 10.0)
+        Log.ui.notice("[startFlow] post-spawn TCP probe result: ok=\(ok)")
         if ok {
             withAnimation(.easeIn(duration: 0.4)) { webReady = true }
             try? await Task.sleep(for: .milliseconds(500))
             withAnimation(.easeOut(duration: 0.4)) { overlayHidden = true }
         }
         // If !ok, the state transition to .failed will be picked up by onChange.
+        Log.ui.notice("[startFlow] EXIT")
     }
 
     private func handleStateChange(_ state: DshProcess.State) {
