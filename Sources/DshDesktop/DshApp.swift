@@ -294,6 +294,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let joinedBefore = beforeTitles.joined(separator: ", ")
         Log.app.debug("pruneAutoMenus: BEFORE — \(joinedBefore, privacy: .public)")
 
+        // Also log each item on its own line — joined strings lose
+        // privacy metadata (each interpolation needs its own
+        // privacy: .public spec for the redaction to be opted out).
+        for (idx, item) in mainMenu.items.enumerated() {
+            let title = item.submenu?.title ?? item.title
+            let kind = item.submenu != nil ? "submenu" : "top-level"
+            Log.app.debug("pruneAutoMenus: BEFORE  menu[\(idx, privacy: .public)] (\(kind, privacy: .public)) = \(title, privacy: .public)")
+        }
+
         let dropTitles: Set<String> = [
             "Help", "Window", "View", "Format",
             "帮助", "窗口", "显示", "视图", "格式",
@@ -320,6 +329,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let afterTitles = mainMenu.items.map { ($0.submenu?.title ?? $0.title) as String }
         let joinedAfter = afterTitles.joined(separator: ", ")
         Log.app.debug("pruneAutoMenus: AFTER — \(joinedAfter, privacy: .public)")
+        for (idx, item) in mainMenu.items.enumerated() {
+            let title = item.submenu?.title ?? item.title
+            let kind = item.submenu != nil ? "submenu" : "top-level"
+            Log.app.debug("pruneAutoMenus: AFTER   menu[\(idx, privacy: .public)] (\(kind, privacy: .public)) = \(title, privacy: .public)")
+        }
     }
 
     @MainActor
