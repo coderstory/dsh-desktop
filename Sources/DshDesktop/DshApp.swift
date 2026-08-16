@@ -183,8 +183,11 @@ struct DshApp: App {
                 .keyboardShortcut(",", modifiers: .command)
             }
 
-            // dsh operations menu
-            CommandMenu("dsh") {
+            // Wrapper operations menu (Chinese label "控制"). Per user request —
+            // English users will see the literal string "控制" until a
+            // zh-Hans/English split becomes a thing; the wrapper's
+            // primary audience is the zh-Hans-locale user.
+            CommandMenu("控制") {
                 Button("Restart dsh") {
                     Task { await process.restart() }
                 }
