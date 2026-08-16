@@ -135,6 +135,11 @@ struct DshApp: App {
             CommandGroup(replacing: .windowList) {}
             CommandGroup(replacing: .windowSize) {}
             CommandGroup(replacing: .windowArrangement) {}
+            // View menu group (Toggle Toolbar / Toggle Sidebar / etc.).
+            // WKWebView wrapper doesn't have a SwiftUI toolbar or sidebar,
+            // so these items would just be inert clutter.
+            CommandGroup(replacing: .toolbar) {}
+            CommandGroup(replacing: .sidebar) {}
 
             // App menu (About + Quit)
             CommandGroup(replacing: .appInfo) {
