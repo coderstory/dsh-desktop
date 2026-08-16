@@ -131,12 +131,19 @@ public final class DshProcess: ObservableObject {
         // `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
         // The wrapper may be finding the wrong dsh via the login shell
         // (e.g. the published npm-global one vs the user's local build).
+        //
+        // Log levels:
+        //   - .error  : dsh's stderr + non-zero exit (always shown —
+        //               this is the actionable signal)
+        //   - .info   : which dsh binary, which argv, env merge result
+        //               (visible in `log show` only with `--info`)
+        //   - .debug  : full PATH / HOME / etc. dump (only with `--debug`)
         let exePath = self.executable.path
         // Privacy: .public opts out of os.log's automatic string
         // interpolation redaction (which otherwise prints "<private>" in
         // `log show` output for any dynamic value).
-        Log.app.error("spawning dsh: executable=\(exePath, privacy: .public)")
-        Log.app.error("spawning dsh: arguments=\(args, privacy: .public)")
+        Log.app.info("spawning dsh: executable=\(exePath, privacy: .public)")
+        Log.app.info("spawning dsh: arguments=\(args, privacy: .public)")
         proc.arguments = args
 
         // Merge the wrapper's minimal GUI env with the user's full
@@ -152,28 +159,26 @@ public final class DshProcess: ObservableObject {
             for (key, value) in userEnv {
                 env[key] = value
             }
-            Log.app.error("spawning dsh: merged login-shell env (\(userEnv.count, privacy: .public) keys)")
+            Log.app.info("spawning dsh: merged login-shell env (\(userEnv.count, privacy: .public) keys)")
         } else {
-            Log.app.error("spawning dsh: could not read login-shell env — using wrapper's minimal env")
+            Log.app.notice("spawning dsh: could not read login-shell env — using wrapper's minimal env")
         }
         proc.environment = env
 
-        // Dump PATH and a few critical vars at error level so they
-        // survive the user's `log show` default filter (which drops
-        // info/debug). privacy: .public opts out of os.log's automatic
-        // redaction of dynamic values.
+        // Dump PATH / HOME / etc. at debug level — visible only with
+        // `log show ... --debug`. Keeps the user's default filter clean.
         if let path = env["PATH"] {
-            Log.app.error("spawning dsh: PATH=\(path, privacy: .public)")
+            Log.app.debug("spawning dsh: PATH=\(path, privacy: .public)")
         }
         if let home = env["HOME"] {
-            Log.app.error("spawning dsh: HOME=\(home, privacy: .public)")
+            Log.app.debug("spawning dsh: HOME=\(home, privacy: .public)")
         }
         if let nodePath = env["NODE_PATH"] {
-            Log.app.error("spawning dsh: NODE_PATH=\(nodePath, privacy: .public)")
+            Log.app.debug("spawning dsh: NODE_PATH=\(nodePath, privacy: .public)")
         }
         // Dsh looks at DSH_HOME too
         if let dshHome = env["DSH_HOME"] {
-            Log.app.error("spawning dsh: DSH_HOME=\(dshHome, privacy: .public)")
+            Log.app.debug("spawning dsh: DSH_HOME=\(dshHome, privacy: .public)")
         }
 
         let errPipe = Pipe()

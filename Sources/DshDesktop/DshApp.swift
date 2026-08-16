@@ -141,7 +141,7 @@ struct DshApp: App {
             CommandGroup(replacing: .toolbar) {}
             CommandGroup(replacing: .sidebar) {}
 
-            // App menu (About + Quit)
+            // App menu (About + Quit + Settings)
             CommandGroup(replacing: .appInfo) {
                 Button("About DshDesktop") {
                     let body = NSMutableAttributedString()
@@ -172,6 +172,15 @@ struct DshApp: App {
                     NSApp.terminate(nil)
                 }
                 .keyboardShortcut("q")
+            }
+
+            // Settings… — Cmd+, standard macOS shortcut. Opens the
+            // liquid-glass Settings window backed by SettingsWindowController.
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    SettingsWindowController.show()
+                }
+                .keyboardShortcut(",", modifiers: .command)
             }
 
             // dsh operations menu
@@ -228,9 +237,12 @@ struct DshApp: App {
         }
 
         // Settings scene — opens via Cmd+, (standard macOS shortcut).
-        Settings {
-            PreferencesView(prefs: prefs)
-        }
+        // Replaced by a custom NSWindowController-based window for
+        // liquid glass styling on macOS 26 (NavigationSplitView sidebar +
+        // .fullSizeContentView). See SettingsWindowController.swift.
+        //
+        // Cmd+, wiring lives in the menu block above (the "Settings…"
+        // item calls SettingsWindowController.show()).
     }
 }
 
