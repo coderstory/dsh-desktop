@@ -107,9 +107,9 @@ Sources/DshDesktop/
 
 scripts/
 ├── build-icons.sh            # 资源生成
-├── bundle.sh                 # 关键：找插件并打包
-├── sign.sh
-├── dmg.sh
+├── bundle.sh                 # swift build -c release + 拼 DshDesktop.app
+├── sign.sh                   # ad-hoc 签名（开发者分发前换成 Developer ID）
+├── dmg.sh                    # 构建 UDZO DMG（drag-to-Applications UX）
 └── smoke-test.sh            # ⚠️ 不用 — 会启动 + kill wrapper
 ```
 

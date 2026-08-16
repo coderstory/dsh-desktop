@@ -5,6 +5,14 @@ All notable changes to DshDesktop are documented here. Versions follow
 
 ## [Unreleased]
 
+### Added
+- **DMG distribution** — `./scripts/dmg.sh` (already in repo, now
+  documented in the release flow) builds a 944K UDZO DMG from
+  `build/DshDesktop.app`. Layout: app + Applications symlink.
+  Ad-hoc signed (matches the .app). For real distribution, swap
+  the `codesign --sign -` in `dmg.sh` for a Developer ID and add
+  notarization via `notarytool`.
+
 ### Removed
 - **Bundled `background-throttle` dsh plugin** — wrapper no longer
   ships a TypeScript plugin. The user manages their dsh plugin
