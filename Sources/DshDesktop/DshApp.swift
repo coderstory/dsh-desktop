@@ -204,29 +204,25 @@ struct DshApp: App {
                 }
             }
 
-            // Quick Links menu
+            // Quick Links menu — external references the user wants one click
+            // away. We NSWorkspace.shared.open (not the dsh webview) so
+            // these always go to the system browser, never into the
+            // wrapper window.
             CommandMenu("Quick Links") {
-                Button("GitHub Repo") {
+                Button("dsh 资源导航 (dshfind)") {
+                    if let url = URL(string: "https://dshfind.com/zh") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("Awesome dsh Plugins") {
+                    if let url = URL(string: "https://awesome-dsh-plugin.com/zh/") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("dsh GitHub Repo") {
                     if let url = URL(string: "https://github.com/deepseek-ai/deepseek-harness") {
                         NSWorkspace.shared.open(url)
                     }
-                }
-                Button("DshDesktop on GitHub") {
-                    if let url = URL(string: "https://github.com/deepseek-ai/dsh-desktop") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                Button("View CHANGELOG") {
-                    let url = URL(fileURLWithPath: "CHANGELOG.md", relativeTo: Bundle.main.bundleURL)
-                        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-                    NSWorkspace.shared.open(url)
-                }
-                Button("Open Console.app (filtered)") {
-                    if let consoleURL = URL(string: "console-app://") {
-                        NSWorkspace.shared.open(consoleURL)
-                    }
-                    // Note: opening with a subsystem filter isn't supported via URL.
-                    // The user can filter by subsystem 'ai.deepseek.dsh.desktop' manually.
                 }
             }
         }
