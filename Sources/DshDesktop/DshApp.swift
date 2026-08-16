@@ -285,34 +285,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// we walk `NSApp.mainMenu` and delete the unwanted top-level items
     /// by title.
     ///
-    /// Match both English ("Help" / "Window" / "View") and Chinese
-    /// ("帮助" / "窗口" / "显示" / "视图") system-translated titles, since
-    /// the user's system locale drives the auto-add labels.
+    /// Diagnostic logging is included so future "menu still there" bugs
+    /// can be debugged from `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
     @MainActor
     static func pruneAutoMenus() {
-        guard let mainMenu = NSApp.mainMenu else { return }
+        guard let mainMenu = NSApp.mainMenu else {
+            Log.app.notice("pruneAutoMenus: NSApp.mainMenu is nil — nothing to do")
+            return
+        }
+        // Log every menu title BEFORE pruning.
+        let beforeTitles = mainMenu.items.map { item -> String in
+            if let sub = item.submenu { return "\(item.title) [sub=\(sub.title)]" }
+            return item.title
+        }
+        Log.app.notice("pruneAutoMenus: BEFORE — \(beforeTitles.joined(separator: ", "))")
+
         let dropTitles: Set<String> = [
-            "Help", "Window", "View",
-            "帮助", "窗口", "显示", "视图",
+            "Help", "Window", "View", "Format",
+            "帮助", "窗口", "显示", "视图", "格式",
         ]
         var keepGoing = true
         while keepGoing {
             keepGoing = false
             for (index, item) in mainMenu.items.enumerated() {
                 if let title = item.submenu?.title, dropTitles.contains(title) {
+                    Log.app.notice("pruneAutoMenus: removing submenu \(title)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
                 }
-                // AppKit sometimes inserts these as top-level items without
-                // a submenu attached; match by title too.
                 if dropTitles.contains(item.title) {
+                    Log.app.notice("pruneAutoMenus: removing top-level \(item.title)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
                 }
             }
         }
+        // Log AFTER for confirmation.
+        let afterTitles = mainMenu.items.map { $0.submenu?.title ?? $0.title }
+        Log.app.notice("pruneAutoMenus: AFTER — \(afterTitles.joined(separator: ", "))")
     }
 
     @MainActor
