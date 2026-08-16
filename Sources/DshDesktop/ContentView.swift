@@ -71,8 +71,13 @@ struct ContentView: View {
             LoadingOverlay(title: "Starting dsh…", subtitle: nil)
 
         case .running where !webReady:
+            // Use NSLocalizedString + String(format:) so %lld gets
+            // substituted with the actual port, AND the localization
+            // system picks the right .lproj. SwiftUI's LocalizedStringKey
+            // doesn't substitute printf-style format specs automatically.
+            let format = NSLocalizedString("Waiting for http://%lld…", comment: "")
             LoadingOverlay(
-                title: "Waiting for http://\(process.port)…",
+                title: LocalizedStringKey(String(format: format, process.port)),
                 subtitle: nil
             )
 

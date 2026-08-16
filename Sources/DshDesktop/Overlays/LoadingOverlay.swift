@@ -12,10 +12,14 @@ struct LoadingOverlay: View {
             Text(title)
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .textSelection(.enabled)  // so user can copy the URL out
             if let subtitle {
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
             }
         }
         .padding(32)
