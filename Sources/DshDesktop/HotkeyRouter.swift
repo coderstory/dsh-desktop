@@ -35,15 +35,23 @@ public final class HotkeyRouter {
                   event.modifierFlags.contains(.command) else {
                 return event  // pass through unchanged
             }
-            // Standard clipboard + select-all shortcuts. Let everything
-            // else flow through to the responder chain.
+            // Standard clipboard + select-all shortcuts. Forward to the
+            // WebView via the standard NSText actions, which WKWebView
+            // implements by delegating to the web content's selection.
+            // NSApp.sendAction walks the responder chain; passing `wv` as
+            // the target starts there.
+            let action: Selector?
             switch event.charactersIgnoringModifiers {
-            case "c": wv.copy(nil);    return nil  // nil = consume the event
-            case "v": wv.paste(nil);   return nil
-            case "x": wv.cut(nil);     return nil
-            case "a": wv.selectAll(nil); return nil
+            case "c": action = #selector(NSText.copy(_:))
+            case "v": action = #selector(NSText.paste(_:))
+            case "x": action = #selector(NSText.cut(_:))
+            case "a": action = #selector(NSText.selectAll(_:))
             default: return event
             }
+            if let action = action {
+                NSApp.sendAction(action, to: wv, from: nil)
+            }
+            return nil  // consume — the WebView handled it
         }
         Log.ui.info("HotkeyRouter: installed Cmd+C/V/X/A → WKWebView forwarder")
     }
