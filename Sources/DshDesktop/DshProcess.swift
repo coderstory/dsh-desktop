@@ -197,6 +197,33 @@ public final class DshProcess: ObservableObject {
             }
         }
 
+        // Defensive PATH hardening. Login-shell env normally carries the
+        // user's full PATH, but if that lookup misses (or the profile's
+        // node/pnpm live under a dir the shell didn't export), dsh's plugin
+        // install step fails with "pnpm: not found". Ensure the common
+        // Node/pnpm bin dirs are present regardless of what the login shell
+        // decided, so boot never dies on a missing $PATH entry.
+        let home = env["HOME"] ?? NSHomeDirectory()
+        if !home.isEmpty {
+            var candidates: [String] = [
+                home + "/.global-npm/bin",   // this machine's global pnpm/node
+                home + "/.npm-global/bin",
+                home + "/.local/share/pnpm", // official pnpm setup
+            ]
+            if let prefix = env["npm_config_prefix"] ?? env["NPM_CONFIG_PREFIX"] {
+                candidates.append(prefix + "/bin")
+            }
+            var pathParts = (env["PATH"] ?? "").split(separator: ":").map(String.init)
+            let existing = Set(pathParts)
+            for dir in candidates where FileManager.default.fileExists(atPath: dir) {
+                if !existing.contains(dir) {
+                    pathParts.insert(dir, at: 0)
+                    Log.app.info("spawning dsh: prepended PATH dir \(dir, privacy: .public)")
+                }
+            }
+            env["PATH"] = pathParts.joined(separator: ":")
+        }
+
         // Dump PATH / HOME / etc. at debug level — visible only with
         // `log show ... --debug`. Keeps the user's default filter clean.
         if let path = env["PATH"] {
