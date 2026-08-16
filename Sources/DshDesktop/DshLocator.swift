@@ -109,9 +109,9 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        // Bare `dsh web` — the user's local dsh accepts this form.
-        // DshProcess appends `--port N` separately.
-        return Location(executablePath: path, arguments: ["dsh", "web"])
+        // Single-argument launch form: the dsh binary receives
+        // `dsh web` as argv[1] (one token), letting dsh parse it.
+        return Location(executablePath: path, arguments: ["dsh web"])
     }
 }
 
