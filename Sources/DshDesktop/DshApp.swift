@@ -282,7 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @MainActor
     static func pruneAutoMenus() {
         guard let mainMenu = NSApp.mainMenu else {
-            Log.app.notice("pruneAutoMenus: NSApp.mainMenu is nil — nothing to do")
+            Log.app.debug("pruneAutoMenus: NSApp.mainMenu is nil — nothing to do")
             return
         }
         // Log every menu title BEFORE pruning. privacy: .public opts out of
@@ -299,7 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // is String, not OSLogMessage — we apply privacy only on the
         // final log line.
         let joinedBefore = beforeTitles.joined(separator: ", ")
-        Log.app.notice("pruneAutoMenus: BEFORE — \(joinedBefore, privacy: .public)")
+        Log.app.debug("pruneAutoMenus: BEFORE — \(joinedBefore, privacy: .public)")
 
         let dropTitles: Set<String> = [
             "Help", "Window", "View", "Format",
@@ -310,13 +310,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             keepGoing = false
             for (index, item) in mainMenu.items.enumerated() {
                 if let title = item.submenu?.title, dropTitles.contains(title) {
-                    Log.app.notice("pruneAutoMenus: removing submenu \(title, privacy: .public)")
+                    Log.app.debug("pruneAutoMenus: removing submenu \(title, privacy: .public)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
                 }
                 if dropTitles.contains(item.title) {
-                    Log.app.notice("pruneAutoMenus: removing top-level \(item.title, privacy: .public)")
+                    Log.app.debug("pruneAutoMenus: removing top-level \(item.title, privacy: .public)")
                     mainMenu.removeItem(at: index)
                     keepGoing = true
                     break
@@ -326,7 +326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Log AFTER for confirmation.
         let afterTitles = mainMenu.items.map { ($0.submenu?.title ?? $0.title) as String }
         let joinedAfter = afterTitles.joined(separator: ", ")
-        Log.app.notice("pruneAutoMenus: AFTER — \(joinedAfter, privacy: .public)")
+        Log.app.debug("pruneAutoMenus: AFTER — \(joinedAfter, privacy: .public)")
     }
 
     @MainActor
