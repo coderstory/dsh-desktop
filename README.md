@@ -1,173 +1,154 @@
 # DshDesktop
 
-A native macOS wrapper around [`dsh --profile web`](https://github.com/deepseek-ai/deepseek-harness).
-Spawns dsh as a child process, shows the web UI in a `WKWebView`,
-and lives in the menu bar so the wrapper stays out of your way.
+一个原生 macOS 包装器，把 [`dsh --profile web`](https://github.com/deepseek-ai/deepseek-harness) 的 Web UI 装进 `WKWebView`。wrapper 以子进程方式拉起 dsh、显示 Web UI，并常驻菜单栏——尽量不打扰你的工作。
 
-[![build & test](https://github.com/deepseek-ai/dsh-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/deepseek-ai/dsh-desktop/actions/workflows/build.yml)
+[![build & test](https://github.com/coderstory/dsh-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/coderstory/dsh-desktop/actions/workflows/build.yml)
 
-## Features
+## 功能
 
-- **Native window** — SwiftUI + `WKWebView`; macOS-style traffic lights, drag, zoom, etc.
-- **Menu bar presence** — close the window and the wrapper stays alive in the menu bar; click the icon → "Show dsh" to reopen.
-- **Single instance** — launching a second copy focuses the existing window and exits.
-- **Auto-spawn or reuse** — if dsh is already serving on the configured port, the wrapper connects without spawning; otherwise it spawns dsh itself.
-- **Health monitoring** — if dsh dies mid-session, the wrapper detects the dead port and surfaces a "dsh stopped responding" overlay with a Restart button.
-- **Bundled dsh plugin: `background-throttle`** — REMOVED. Wrapper no longer ships a bundled dsh plugin; manage your own dsh plugins in `~/.dsh/profiles/web/`.
-- **System notifications** — fires a macOS banner when the dsh agent finishes responding to your last prompt (toggled in Settings).
-- **Polling interval** — 1–60s slider in Settings; pauses automatically when the window is hidden.
-- **Performance monitor** (opt-in) — detects long-running tasks (>100ms) inside dsh's UI, lists the active plugins from the DOM, and shows the data in the menu bar / a detailed alert. Useful when a dsh plugin is eating CPU.
-- **Diagnostics** — `dsh ▸ Save Diagnostic Report…` writes a plain-text snapshot of the wrapper's state (prefs, monitor stats, recent os.log lines) for bug reports.
-- **Auto-update dsh** — `dsh ▸ Update dsh…` runs `npm update -g @deepseek-ai/dsh` and reports the result.
-- **Launch at login** — toggle in the dsh menu; backed by `SMAppService` (modern, no deprecated SMLoginItem).
-- **Localized** — English + Simplified Chinese.
+- **原生窗口** — SwiftUI + `WKWebView`；原生 macOS 交通灯、拖动、缩放等。
+- **常驻菜单栏** — 关掉窗口，wrapper 仍在菜单栏存活；点图标 →「Show dsh」即可重新打开。
+- **单实例** — 再启动一份会聚焦已有窗口并退出。
+- **自动拉起或复用** — 若 dsh 已在配置端口提供服务，wrapper 直接连上而不拉起；否则自行拉起 dsh。
+- **健康监测** — dsh 中途挂掉时，wrapper 侦测到端口失效并弹出「dsh stopped responding」遮罩，附 Restart 按钮。
+- **系统通知** — dsh agent 完成对您最后一条提示的响应后弹一条 macOS 横幅（在 Settings 中开关）。
+- **诊断报告** — `dsh ▸ Save Diagnostic Report…` 把 wrapper 状态（prefs、进程状态、最近 os.log）写成纯文本快照，便于提交 bug 报告。
+- **更新 dsh** — `dsh ▸ Update dsh…` 执行 `npm update -g @deepseek-ai/dsh` 并反馈结果。
+- **开机启动** — 在 dsh 菜单切换；由 `SMAppService` 支撑（现代做法，不用已废弃的 SMLoginItem）。
+- **本地化** — 英文 + 简体中文。
 
-## Requirements
+## 环境要求
 
-- macOS 25.0+ (Tahoe or later)
-- Xcode 27+ toolchain (Swift 6.4)
-- `dsh` installed and on your shell's `$PATH`
+- macOS 25.0+（Tahoe 或更新）
+- Xcode 27+ 工具链（Swift 6.4）
+- 已安装 `dsh` 且在 shell 的 `$PATH` 里
 
-## Build & Install
+## 构建与安装
 
 ```bash
-./scripts/bundle.sh     # swift build -c release + assemble DshDesktop.app
-./scripts/sign.sh       # ad-hoc sign
-./scripts/dmg.sh        # optional: build a UDZO DMG for distribution
+./scripts/bundle.sh     # swift build -c release + 组装 DshDesktop.app
+./scripts/sign.sh       # ad-hoc 签名
+./scripts/dmg.sh        # 可选：打 UDZO DMG 用于分发
 
-# Run from build:
+# 直接从构建产物运行：
 open build/DshDesktop.app
 
-# Or install to /Applications:
+# 或安装到 /Applications：
 cp -R build/DshDesktop.app /Applications/
 open /Applications/DshDesktop.app
 ```
 
-## CLI flags
+## CLI 参数
 
-| Flag | Effect |
+| 参数 | 作用 |
 |---|---|
-| `--port <N>` | TCP port dsh serves on (default: 3080, or from Preferences) |
-| `--dsh-path <P>` | Absolute path to dsh binary; skips shell-based `which` lookup (use this if your `PATH` is set in `~/.zshrc` which the wrapper's login shell doesn't source) |
-| `--no-spawn` | Don't launch dsh; connect to an externally-managed dsh on `--port` |
-| `--debug` | Verbose os.log output (subsystem `ai.deepseek.dsh.desktop`) |
-| `--help`, `-h` | Print help and exit |
+| `--port <N>` | dsh 监听的 TCP 端口（默认 3080，或来自 Preferences） |
+| `--dsh-path <P>` | dsh 可执行文件的绝对路径；跳过基于 shell 的 `which` 查找（若你的 `PATH` 设在 `~/.zshrc` 而 wrapper 的 login shell 不 source 它，请用它） |
+| `--no-spawn` | 不拉起 dsh；连到 `--port` 上由外部管理的 dsh |
+| `--debug` | 输出详细 os.log（subsystem `ai.deepseek.dsh.desktop`） |
+| `--help`、`-h` | 打印帮助并退出 |
 
-Unknown flags are silently ignored (so the test runner can pass `--test-bundle-path` etc.).
+未知参数会被静默忽略（这样测试运行器可以传 `--test-bundle-path` 等）。
 
-### DshLocator lookup strategy (in order)
+### DshLocator 查找策略（按顺序）
 
-1. `zsh -l -c "...source ~/.zshrc; command -v dsh"` (login + interactive config)
+1. `zsh -l -c "...source ~/.zshrc; command -v dsh"`（login + interactive 配置）
 2. `bash -l -c "...source ~/.bashrc; command -v dsh"`
-3. `zsh -l -c "command -v dsh"` (login only)
+3. `zsh -l -c "command -v dsh"`（仅 login）
 4. `bash -l -c "command -v dsh"`
-5. `npm config get prefix` + check `<prefix>/bin/dsh` (Node-aware, no shell init)
-6. `env which dsh` (last-resort)
+5. `npm config get prefix` + 检查 `<prefix>/bin/dsh`（Node 感知，不依赖 shell init）
+6. `env which dsh`（兜底）
 
-If all fail, the wrapper shows a friendly "dsh not found" alert with install instructions. Use `--dsh-path <abs>` to skip all of the above.
+全部失败时，wrapper 会弹出友好的「dsh not found」提示并附安装说明。用 `--dsh-path <abs>` 可跳过以上所有步骤。
 
-## Settings
+## 设置
 
-Open with `Cmd+,`. All values persist to `UserDefaults`.
+`Cmd+,` 打开。所有值持久化到 `UserDefaults`。
 
-- **Server** — port (with `Apply` button; dsh restart required to take effect)
-- **Notifications** — toggle "Show notification when dsh finishes"
-- **Polling** — slider 1–60s; toggle "Pause polling when window is hidden"
-- **Diagnostics** — toggle "Enable browser performance monitor" (off by default)
+- **Server** — 端口（带 Apply 按钮；需重启 dsh 生效）
+- **Notifications** — 开关「Show notification when dsh finishes」（dsh 完成响应时弹横幅）
 
-## What "design patterns" look like in the code
+> 说明：轮询间隔滑块、窗口隐藏暂停轮询、以及基于 WebKit 的性能监控这几个低价值开关已移除。wrapper 现在只保留「轮询 dsh 的忙碌/空闲指示器、在完成时发通知」这一条链路，通知权限在首次运行时向 macOS 申请。
 
-| Pattern | Where |
+## 代码里的「设计模式」
+
+| 模式 | 位置 |
 |---|---|
-| State machine | `DshProcess.State` (idle / starting / running / exited / failed) |
-| Strategy | `DshLocator` tries login shells (zsh, bash) then `env which` as fallback |
-| Repository | `Preferences` abstracts `UserDefaults` with input sanitization |
-| MVVM (light) | `DshApp` owns `process` / `prefs` / `idleWatcher` as `@StateObject`; passes to `ContentView` via init |
-| Observer | `@Published` + SwiftUI `.onChange` for hot-reload (polling interval, port) |
-| State | SwiftUI Window + `Settings` scenes, menu bar via `NSStatusItem` |
-| Sendable | `WhichFunc`, `LoginItemProviding`, `TestHTTPServer` annotated for Swift 6 strict-concurrency |
-| DI | `Preferences.init(defaults:)` injects `UserDefaults`; `LaunchConfig.current(preferences:)` injects prefs |
+| 状态机 | `DshProcess.State`（idle / starting / running / exited / failed） |
+| 策略 | `DshLocator` 依次尝试 login shell（zsh、bash）再 `env which` 兜底 |
+| 仓储 | `Preferences` 抽象 `UserDefaults` 并做输入消毒 |
+| MVVM（轻量） | `DshApp` 以 `@StateObject` 持有 `process` / `prefs` / `idleWatcher`，经 init 传给 `ContentView` |
+| 观察者 | `@Published` + SwiftUI `.onChange` 做热重载 |
+| 状态 | SwiftUI Window + Settings 窗口、菜单栏用 `NSStatusItem` |
+| Sendable | `WhichFunc`、`LoginItemProviding`、`TestHTTPServer` 标注以适配 Swift 6 严格并发 |
+| DI | `Preferences.init(defaults:)` 注入 `UserDefaults`；`LaunchConfig.current(preferences:)` 注入 prefs |
 
-## File structure
+## 文件结构
 
 ```
 Sources/DshDesktop/
-├── DshApp.swift              # @main, AppDelegate, scene composition
-├── ContentView.swift         # thin view: ZStack + startFlow
-├── DSHWebView.swift          # NSViewRepresentable
+├── DshApp.swift                  # @main、AppDelegate、场景组合
+├── ContentView.swift             # 薄视图：ZStack + startFlow
+├── DSHWebView.swift              # NSViewRepresentable
 ├── Overlays/
-│   ├── LoadingOverlay.swift  # .idle/.starting + .running!webReady
-│   └── FailedOverlay.swift   # .failed with stderr scrollview
+│   ├── LoadingOverlay.swift      # .idle/.starting + .running!webReady
+│   └── FailedOverlay.swift       # .failed 带 stderr 滚动视图
 ├── WebView/
-│   ├── DSHWebView+IdleProbe.swift        # dshIsAgentStreaming() JS
-│   └── DSHWebView+PerformanceStats.swift  # long-task + memory + plugins
-├── DshProcess.swift          # state machine + spawn lifecycle + stderr tail
-├── DshHealthCheck.swift      # one-shot port probe
-├── DshLocator.swift          # find dsh binary via login shell
-├── DshHealthMonitor.swift    # 15s port liveness poll → .failed on death
-├── AgentIdleWatcher.swift    # DOM stream poll + state machine + cooldown
-├── LaunchAtLogin.swift       # SMAppService.mainApp toggle
-├── LaunchConfig.swift        # CLI parser (Sendable)
-├── Notifications.swift       # UNUserNotificationCenter wrapper
-├── Preferences.swift         # UserDefaults persistence + sanitization
-├── PreferencesView.swift     # Settings scene UI
-├── PerformanceMonitor.swift  # 10s in-page perf poll
-├── Diagnostics.swift         # diagnostic report generator
-├── ShellRunner.swift         # async shell exec helper
-├── Logger.swift              # os.log categories
+│   └── DSHWebView+IdleProbe.swift  # dshIsAgentStreaming() JS
+├── HotkeyRouter.swift            # Cmd+C/V/X/A 转发给 WKWebView
+├── DshProcess.swift              # 状态机 + spawn 生命周期 + stderr 尾部
+├── DshHealthCheck.swift          # 一次性端口探测
+├── DshLocator.swift              # 经 login shell 找 dsh 可执行文件
+├── DshHealthMonitor.swift        # 15s 端口存活轮询 → 死亡转 .failed
+├── AgentIdleWatcher.swift        # DOM 流轮询 + 状态机 + cooldown
+├── LaunchAtLogin.swift           # SMAppService.mainApp 开关
+├── LaunchConfig.swift            # CLI 解析（Sendable）
+├── Notifications.swift           # UNUserNotificationCenter 封装
+├── Preferences.swift             # UserDefaults 持久化 + 消毒
+├── SettingsView.swift            # Settings 根视图（NavigationSplitView）
+├── SettingsPanes.swift           # 设置各分栏 UI
+├── SettingsWindowController.swift# Settings 窗口（liquid glass 样式）
+├── Diagnostics.swift             # 诊断报告生成器
+├── ShellRunner.swift             # 异步 shell 执行助手
+├── Logger.swift                  # os.log 分类
 └── Resources/
     ├── en.lproj/Localizable.strings
     ├── zh-Hans.lproj/Localizable.strings
     ├── AppIcon.svg / .icns
     ├── MenuBarIconTemplate.svg / .png / @2x.png
-    └── (no bundled dsh plugins — manage them in your dsh install)
-```
+    └── （不含捆绑的 dsh 插件——在你的 dsh 安装里自行管理）
 ```
 
-## Tests
+## 测试
 
 ```bash
-swift test                  # 70 tests across 12 suites
+swift test                          # 64 个测试，10 个 suite
 swift test -Xswiftc -warnings-as-errors
 ```
 
-## Diagnostics
+## 诊断
 
-If dsh is misbehaving (high CPU, crashes, etc.), save a diagnostic report:
+若 dsh 行为异常（高 CPU、崩溃等），导出诊断报告：
 
-1. `dsh ▸ Save Diagnostic Report…` in the menu bar
-2. Choose a save location
-3. Open the `.txt` and include it in bug reports
+1. 菜单栏 `dsh ▸ Save Diagnostic Report…`
+2. 选择保存位置
+3. 打开 `.txt` 并随 bug 报告一起附上
 
-The report includes:
-- App / macOS / Swift versions
-- All Preferences values
-- DshProcess state + port + stderr tail
-- PerformanceMonitor.lastStats (long-task count, duration, memory, active plugin list)
-- Last 100 log entries from the wrapper's subsystem (10-minute lookback via `OSLogStore`)
+报告内容：
+- App / macOS / Swift 版本
+- 所有 Preferences 值
+- DshProcess 状态 + 端口 + stderr 尾部
+- 最近 100 条来自本 subsystem 的日志（`OSLogStore`，10 分钟回溯）
 
-To see logs in real time: `Console.app` → filter by subsystem `ai.deepseek.dsh.desktop`.
+想在控制台实时看日志：`Console.app` → 按 subsystem `ai.deepseek.dsh.desktop` 过滤。
 
-## "How do I figure out which dsh plugin is using CPU?"
+## 已知限制
 
-Short answer: **you can't get perfect per-plugin attribution from Swift + WebKit**. WebKit's `PerformanceLongTaskTiming` lacks the `attribution` field that Chromium has, so we can't pinpoint which JS source a long task originated from. We can report:
-
-- Total count of long tasks (>100ms)
-- Cumulative duration
-- JS heap size
-- The list of currently-loaded plugins (from DOM `data-plugin-name` / `data-plugin-id` / `.plugin-name`)
-
-To find the culprit: enable the performance monitor in Settings, wait for a CPU spike, and check the active plugin list. The plugin that's present during the spike is the suspect — go to dsh and disable it.
-
-This is the limit of what WebKit exposes today. dsh would need to add its own `performance.mark('plugin-X-task')` calls per plugin for true attribution — out of scope for the wrapper.
-
-## Known limitations
-
-- **No automatic Sparkle update** — ad-hoc signed only. For distribution outside your own machine, sign with a Developer ID and add Sparkle.
-- **No notarization** — first run on a new machine requires right-click → Open.
-- **No multi-instance** — by design. If you need two wrappers (e.g. for comparing dsh versions), open a second one in a different user session.
-- **dsh plugin CPU is not controllable from the wrapper** — see the "How do I figure out which dsh plugin is using CPU?" section.
+- **无 Sparkle 自动更新** — 仅 ad-hoc 签名。要在自己机器之外分发，需要用 Developer ID 签名并接入 Sparkle。
+- **未公证 (notarization)** — 新机器首次运行需右键 → 打开。
+- **不支持多实例** — 有意为之。若需两个 wrapper（例如对比 dsh 版本），请在另一个用户会话里再开一份。
+- **dsh 插件的 CPU 无法从 wrapper 直接控制** — 若怀疑某个插件吃 CPU，用 dsh 本身的排查手段（性能监视已移除）。
 
 ## License
 
-MIT. See `LICENSE`.
+MIT。见 `LICENSE`。
