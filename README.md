@@ -83,64 +83,12 @@ open /Applications/DshDesktop.app
 | Sendable | `WhichFunc`、`LoginItemProviding`、`TestHTTPServer` 标注以适配 Swift 6 严格并发 |
 | DI | `Preferences.init(defaults:)` 注入 `UserDefaults`；`LaunchConfig.current(preferences:)` 注入 prefs |
 
-## 文件结构
-
-```
-Sources/DshDesktop/
-├── DshApp.swift                  # @main、AppDelegate、场景组合
-├── ContentView.swift             # 薄视图：ZStack + startFlow
-├── DSHWebView.swift              # NSViewRepresentable
-├── Overlays/
-│   ├── LoadingOverlay.swift      # .idle/.starting + .running!webReady
-│   └── FailedOverlay.swift       # .failed 带 stderr 滚动视图
-├── WebView/
-│   └── DSHWebView+IdleProbe.swift  # dshIsAgentStreaming() JS
-├── HotkeyRouter.swift            # Cmd+C/V/X/A 转发给 WKWebView
-├── DshProcess.swift              # 状态机 + spawn 生命周期 + stderr 尾部
-├── DshHealthCheck.swift          # 一次性端口探测
-├── DshLocator.swift              # 经 login shell 找 dsh 可执行文件
-├── DshHealthMonitor.swift        # 15s 端口存活轮询 → 死亡转 .failed
-├── AgentIdleWatcher.swift        # DOM 流轮询 + 状态机 + cooldown
-├── LaunchAtLogin.swift           # SMAppService.mainApp 开关
-├── LaunchConfig.swift            # CLI 解析（Sendable）
-├── Notifications.swift           # UNUserNotificationCenter 封装
-├── Preferences.swift             # UserDefaults 持久化 + 消毒
-├── SettingsView.swift            # Settings 根视图（NavigationSplitView）
-├── SettingsPanes.swift           # 设置各分栏 UI
-├── SettingsWindowController.swift# Settings 窗口（liquid glass 样式）
-├── Diagnostics.swift             # 诊断报告生成器
-├── ShellRunner.swift             # 异步 shell 执行助手
-├── Logger.swift                  # os.log 分类
-└── Resources/
-    ├── en.lproj/Localizable.strings
-    ├── zh-Hans.lproj/Localizable.strings
-    ├── AppIcon.svg / .icns
-    ├── MenuBarIconTemplate.svg / .png / @2x.png
-    └── （不含捆绑的 dsh 插件——在你的 dsh 安装里自行管理）
-```
-
 ## 测试
 
 ```bash
 swift test                          # 64 个测试，10 个 suite
 swift test -Xswiftc -warnings-as-errors
 ```
-
-## 诊断
-
-若 dsh 行为异常（高 CPU、崩溃等），导出诊断报告：
-
-1. 菜单栏 `dsh ▸ Save Diagnostic Report…`
-2. 选择保存位置
-3. 打开 `.txt` 并随 bug 报告一起附上
-
-报告内容：
-- App / macOS / Swift 版本
-- 所有 Preferences 值
-- DshProcess 状态 + 端口 + stderr 尾部
-- 最近 100 条来自本 subsystem 的日志（`OSLogStore`，10 分钟回溯）
-
-想在控制台实时看日志：`Console.app` → 按 subsystem `ai.deepseek.dsh.desktop` 过滤。
 
 ## 已知限制
 
