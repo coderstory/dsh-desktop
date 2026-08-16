@@ -32,3 +32,47 @@ struct ShellRunnerTests {
         #expect(result.output.contains("stderr-msg"))
     }
 }
+
+@Suite("ShellRunner env parsing")
+struct ShellRunnerEnvTests {
+
+    @Test func parseEnvZero_handlesKeyValuePairs() {
+        let data = Data("PATH=/usr/bin\0HOME=/Users/test\0LANG=en\0".utf8)
+        let env = ShellRunner.parseEnvZero(data)
+        #expect(env?["PATH"] == "/usr/bin")
+        #expect(env?["HOME"] == "/Users/test")
+        #expect(env?["LANG"] == "en")
+        #expect(env?.count == 3)
+    }
+
+    @Test func parseEnvZero_handlesEqualsInValue() {
+        let data = Data("TOKEN=a=b=c\0".utf8)
+        let env = ShellRunner.parseEnvZero(data)
+        #expect(env?["TOKEN"] == "a=b=c")
+    }
+
+    @Test func parseEnvZero_emptyData_returnsNil() {
+        #expect(ShellRunner.parseEnvZero(Data()) == nil)
+    }
+
+    @Test func parseEnvZero_garbageLinesSkipped() {
+        let data = Data("VALID=x\0NOEQUALS\0ALSO=y\0".utf8)
+        let env = ShellRunner.parseEnvZero(data)
+        #expect(env?["VALID"] == "x")
+        #expect(env?["ALSO"] == "y")
+        #expect(env?.count == 2)
+    }
+
+    @Test func loginShellEnvironment_returnsNonEmptyOnDev() async {
+        // Real zsh is on the dev box. Should return at least the typical
+        // vars (PATH, HOME, USER, etc.) from the login shell env.
+        guard let env = await ShellRunner.loginShellEnvironment() else {
+            Issue.record("loginShellEnvironment returned nil")
+            return
+        }
+        #expect(env["PATH"]?.isEmpty == false)
+        #expect(env["HOME"]?.isEmpty == false)
+        // PATH should include the npm-global bin (where `dsh` lives).
+        #expect(env.count > 3)
+    }
+}

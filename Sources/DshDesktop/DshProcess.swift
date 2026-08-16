@@ -140,8 +140,24 @@ public final class DshProcess: ObservableObject {
         }
 
         proc.arguments = args
-        // Inherit user's PATH/environment.
-        proc.environment = ProcessInfo.processInfo.environment
+        // Merge the wrapper's minimal GUI env with the user's full
+        // login-shell env. The wrapper is launched from Finder/Dock with
+        // PATH=/usr/bin:/bin:/usr/sbin:/sbin; that misses node and any
+        // npm-global bin that's not already in the wrapper's PATH. Without
+        // this merge, dsh's own `#!/usr/bin/env node` shebang fails with
+        // "env: node: No such file or directory".
+        var env = ProcessInfo.processInfo.environment
+        if let userEnv = await ShellRunner.loginShellEnvironment() {
+            // User env wins for PATH (and most other vars). The wrapper's
+            // existing env values stay for keys the user shell didn't set.
+            for (key, value) in userEnv {
+                env[key] = value
+            }
+            Log.app.info("merged login-shell env into spawn env (\(userEnv.count) keys)")
+        } else {
+            Log.app.notice("could not read login-shell env; spawn env is wrapper's minimal PATH")
+        }
+        proc.environment = env
 
         let errPipe = Pipe()
         proc.standardError = errPipe
