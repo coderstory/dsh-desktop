@@ -184,10 +184,8 @@ struct AboutSettingsPane: View {
             }
 
             Section(String(localized: "Links")) {
-                Link(String(localized: "dsh 资源导航"),
-                     destination: URL(string: "https://dshfind.com/zh")!)
-                Link(String(localized: "Awesome dsh Plugins"),
-                     destination: URL(string: "https://awesome-dsh-plugin.com/zh/")!)
+                // Removed per user request — the same URLs remain accessible
+                // from the Quick Links menu item.
             }
 
             Section(String(localized: "Credits")) {

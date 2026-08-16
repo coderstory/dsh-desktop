@@ -45,8 +45,6 @@
 "Links" = "Links";
 "Credits" = "Credits";
 "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`." = "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`.";
-"dsh 资源导航" = "dsh 资源导航";
-"Awesome dsh Plugins" = "Awesome dsh Plugins";
 
 /* App menu */
 "About DshDesktop" = "About DshDesktop";
