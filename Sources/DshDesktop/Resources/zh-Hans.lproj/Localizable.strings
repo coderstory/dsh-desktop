@@ -45,7 +45,6 @@
 "Links" = "链接";
 "Credits" = "致谢";
 "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`." = "作为薄原生 SwiftUI 外壳，运行于 `@deepseek-ai/dsh` 之上。";
-"GitHub Repo" = "GitHub 仓库";
 "dsh 资源导航" = "dsh 资源导航";
 "Awesome dsh Plugins" = "Awesome dsh 插件";
 
@@ -60,7 +59,6 @@
 "Update dsh…" = "更新 dsh…";
 
 /* Quick Links menu */
-"GitHub Repo" = "GitHub 仓库";
 
 /* Status menu */
 "Show dsh" = "显示 dsh";

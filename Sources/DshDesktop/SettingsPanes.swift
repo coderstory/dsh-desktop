@@ -184,8 +184,6 @@ struct AboutSettingsPane: View {
             }
 
             Section(String(localized: "Links")) {
-                Link(String(localized: "GitHub Repo"),
-                     destination: URL(string: "https://github.com/deepseek-ai/deepseek-harness")!)
                 Link(String(localized: "dsh 资源导航"),
                      destination: URL(string: "https://dshfind.com/zh")!)
                 Link(String(localized: "Awesome dsh Plugins"),
