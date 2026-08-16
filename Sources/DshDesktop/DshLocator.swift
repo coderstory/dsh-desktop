@@ -109,10 +109,8 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        // Use `dsh web --profile web` — explicit subcommand + explicit flag.
-        // The user's local dsh build requires `--profile` even when using
-        // the `web` subcommand. Works universally across dsh versions.
-        return Location(executablePath: path, arguments: ["dsh", "web", "--profile", "web"])
+        // Original dsh launch format — upstream default.
+        return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
     }
 }
 
