@@ -133,8 +133,9 @@ public final class DshProcess: ObservableObject {
         // `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
         // The wrapper may be finding the wrong dsh via the login shell
         // (e.g. the published npm-global one vs the user's local build).
+        let exePath = self.executable.path
         Log.app.info("spawning dsh:")
-        Log.app.info("  executable: \(executable.path)")
+        Log.app.info("  executable: \(exePath)")
         Log.app.info("  arguments: \(args)")
 
         // Inject the bundled dsh plugin(s) as a patch file. This is
