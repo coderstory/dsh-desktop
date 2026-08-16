@@ -16,6 +16,13 @@ struct ContentView: View {
             DSHWebView(
                 url: webURL,
                 onWebViewReady: { wv in
+                    // Bind the WKWebView to the hotkey router so
+                    // Cmd+C / Cmd+V / Cmd+X / Cmd+A inside the dsh web
+                    // content forward to the WebView's clipboard actions
+                    // (which delegate to the web's standard browser
+                    // behavior — copy / paste / cut / select-all).
+                    HotkeyRouter.shared.bind(wv)
+
                     // Wire the running evaluator: poll dsh's UI for the
                     // streaming indicator on the configured interval.
                     idleWatcher.replaceEvaluator { [weak wv] in
