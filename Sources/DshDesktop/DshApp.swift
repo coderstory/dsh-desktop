@@ -267,6 +267,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 _ = window.setFrameAutosaveName(Self.mainWindowAutosaveName)
                 window.delegate = self
             }
+            // SwiftUI's `CommandGroup(replacing: .help / .windowList / ...)`
+            // empties the contents but does NOT remove the menu itself
+            // (AppKit auto-adds Help + Window menus based on a windowed
+            // app). Remove them from the live NSApp.mainMenu after SwiftUI
+            // has finished building the menu bar.
+            Self.pruneAutoMenus()
+        }
+    }
+
+    /// Remove the Help and Window menus that AppKit auto-adds to every
+    /// windowed macOS app. SwiftUI's `CommandGroup(replacing: ...)` only
+    /// empties their contents, so we walk `NSApp.mainMenu` and delete
+    /// them by title.
+    @MainActor
+    static func pruneAutoMenus() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        let dropTitles: Set<String> = ["Help", "Window"]
+        var keepGoing = true
+        while keepGoing {
+            keepGoing = false
+            for (index, item) in mainMenu.items.enumerated() {
+                if let title = item.submenu?.title, dropTitles.contains(title) {
+                    mainMenu.removeItem(at: index)
+                    keepGoing = true
+                    break
+                }
+                // AppKit sometimes inserts these as top-level items without
+                // a submenu attached; match by title too.
+                if dropTitles.contains(item.title) {
+                    mainMenu.removeItem(at: index)
+                    keepGoing = true
+                    break
+                }
+            }
         }
     }
 
