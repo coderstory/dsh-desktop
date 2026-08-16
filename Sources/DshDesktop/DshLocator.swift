@@ -109,8 +109,9 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        // Original dsh launch format — upstream default.
-        return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
+        // Bare `dsh web` — the user's local dsh accepts this form.
+        // DshProcess appends `--port N` separately.
+        return Location(executablePath: path, arguments: ["dsh", "web"])
     }
 }
 
