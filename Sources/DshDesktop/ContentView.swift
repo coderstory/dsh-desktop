@@ -31,14 +31,6 @@ struct ContentView: View {
                     }
                     idleWatcher.reset()
                     idleWatcher.start()
-
-                    // Also attach the WKWebView to the (optional) performance
-                    // monitor. The monitor is enabled via Preferences and polls
-                    // long-task counts + memory + plugin list from the page.
-                    PerformanceMonitor.shared.attach(to: wv)
-                    if Preferences.shared.enablePerformanceMonitoring {
-                        PerformanceMonitor.shared.start()
-                    }
                 },
                 onReload: {
                     idleWatcher.reset()
@@ -52,6 +44,10 @@ struct ContentView: View {
             }
         }
         .task {
+            // Request notification permission once (prompts the user).
+            // Non-blocking: we don't await the result — if denied,
+            // Notifications.notify becomes a silent no-op.
+            Task { await Notifications.requestAuthorization() }
             await startFlow()
         }
         .onChange(of: process.state) { _, newState in

@@ -17,9 +17,8 @@ public final class AgentIdleWatcher: ObservableObject {
 
     public typealias Evaluator = @MainActor () async -> Bool
 
-    /// Settable at runtime — changes take effect on the next `runLoop` tick.
-    /// Source of truth is `Preferences.shared.pollingIntervalSeconds`.
-    public var pollInterval: TimeInterval
+    /// Fixed interval between idle-probe polls. Not user-tunable.
+    public let pollInterval: TimeInterval
 
     private let cooldown: TimeInterval
     private var evaluator: Evaluator
@@ -51,16 +50,6 @@ public final class AgentIdleWatcher: ObservableObject {
     public func stop() {
         task?.cancel()
         task = nil
-    }
-
-    /// Suspend the polling loop without changing `state`. Idempotent.
-    /// Use when the user wants lower background activity (e.g. window
-    /// hidden, battery saver). Resumes via `start()`.
-    public func pause() {
-        guard task != nil else { return }
-        task?.cancel()
-        task = nil
-        Log.ui.info("AgentIdleWatcher: paused")
     }
 
     public func reset() {

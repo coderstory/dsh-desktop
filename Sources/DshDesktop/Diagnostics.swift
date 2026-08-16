@@ -36,9 +36,6 @@ public enum Diagnostics {
         lines.append("Preferences")
         lines.append("  port:                       \(prefs.port)")
         lines.append("  notificationsEnabled:       \(prefs.notificationsEnabled)")
-        lines.append("  pollingIntervalSeconds:     \(prefs.pollingIntervalSeconds)")
-        lines.append("  pausePollingWhenHidden:     \(prefs.pausePollingWhenHidden)")
-        lines.append("  enablePerformanceMonitoring: \(prefs.enablePerformanceMonitoring)")
         lines.append("")
 
         // Process state
@@ -51,26 +48,6 @@ public enum Diagnostics {
                 lines.append("  stderr (tail, last \(process.stderrTail.count) chars):")
                 lines.append(indent(process.stderrTail, "    "))
             }
-            lines.append("")
-        }
-
-        // Performance monitor
-        if let stats = PerformanceMonitor.shared.lastStats {
-            lines.append("PerformanceMonitor (last sample)")
-            lines.append("  longTaskCount:    \(stats.longTaskCount)")
-            lines.append("  longTaskTotalMs:  \(stats.longTaskTotalMs)")
-            lines.append("  memoryMB:         \(stats.memoryMB.map(String.init) ?? "—")")
-            lines.append("  pluginCount:      \(stats.pluginCount)")
-            lines.append("  plugins:")
-            for p in stats.plugins.prefix(20) {
-                lines.append("    • \(p)")
-            }
-            if stats.plugins.count > 20 {
-                lines.append("    • …(\(stats.plugins.count - 20) more)")
-            }
-            lines.append("")
-        } else {
-            lines.append("PerformanceMonitor: no samples (disabled or wrapper just started)")
             lines.append("")
         }
 

@@ -20,7 +20,6 @@ struct PreferencesTests {
         #expect(prefs.port == Preferences.defaultPort)
         #expect(prefs.port == 3080)
         #expect(prefs.notificationsEnabled == true)
-        #expect(prefs.pollingIntervalSeconds == 5.0)
     }
 
     @Test func setting_port_persistsAcrossInstances() {
@@ -39,14 +38,6 @@ struct PreferencesTests {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    @Test func setting_pollingIntervalSeconds_persistsAcrossInstances() {
-        let (prefs1, defaults, suiteName) = makeFresh()
-        prefs1.pollingIntervalSeconds = 10.0
-        let prefs2 = Preferences(defaults: defaults)
-        #expect(prefs2.pollingIntervalSeconds == 10.0)
-        defaults.removePersistentDomain(forName: suiteName)
-    }
-
     @Test func init_invalidPortInDefaults_fallsBackToDefault() {
         let suiteName = "test-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -57,28 +48,12 @@ struct PreferencesTests {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    @Test func init_pollingIntervalOutOfRange_isClamped() {
-        let suiteName = "test-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defaults.set(0.5, forKey: Preferences.Keys.pollingIntervalSeconds)
-        let prefsLow = Preferences(defaults: defaults)
-        #expect(prefsLow.pollingIntervalSeconds == Preferences.pollingIntervalRange.lowerBound)
-
-        defaults.set(999.0, forKey: Preferences.Keys.pollingIntervalSeconds)
-        let prefsHigh = Preferences(defaults: defaults)
-        #expect(prefsHigh.pollingIntervalSeconds == Preferences.pollingIntervalRange.upperBound)
-        defaults.removePersistentDomain(forName: suiteName)
-    }
-
     @Test func resetToDefaults_restoresAllToFactory() {
         let (prefs, _, _) = makeFresh()
         prefs.port = 8080
         prefs.notificationsEnabled = false
-        prefs.pollingIntervalSeconds = 30.0
         prefs.resetToDefaults()
         #expect(prefs.port == Preferences.defaultPort)
         #expect(prefs.notificationsEnabled == true)
-        #expect(prefs.pollingIntervalSeconds == 5.0)
     }
 }

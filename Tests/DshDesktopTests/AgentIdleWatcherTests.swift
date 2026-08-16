@@ -147,50 +147,6 @@ struct AgentIdleWatcherTests {
     }
 }
 
-@Suite("AgentIdleWatcher pause/resume")
-@MainActor
-struct AgentIdleWatcherPauseTests {
-
-    @Test func pause_afterStart_cancelsPolling() async throws {
-        let watcher = makePauseWatcher()
-        watcher.start()
-        try await Task.sleep(for: .milliseconds(50))
-        let beforeState = watcher.state
-        watcher.pause()
-        // After pause, polling is gone. Wait past one poll interval and
-        // confirm state did not change (no tick ran).
-        try await Task.sleep(for: .milliseconds(200))
-        #expect(watcher.state == beforeState)
-    }
-
-    @Test func pause_isIdempotent() async {
-        let watcher = makePauseWatcher()
-        watcher.start()
-        watcher.pause()
-        watcher.pause()  // no-op
-        watcher.pause()  // no-op
-    }
-
-    @Test func start_afterPause_resumesPolling() async throws {
-        let watcher = makePauseWatcher()
-        watcher.start()
-        watcher.pause()
-        watcher.start()  // resume
-        try await Task.sleep(for: .milliseconds(80))
-        // Watcher ran some tick (idle or busy is fine).
-        #expect(watcher.state == .idle || watcher.state == .busy)
-        watcher.stop()
-    }
-
-    private func makePauseWatcher() -> AgentIdleWatcher {
-        AgentIdleWatcher(
-            pollInterval: 0.05,
-            evaluator: { false },
-            notify: { _, _ in }
-        )
-    }
-}
-
 /// Reference-typed wrapper for mutable Bool used across closure boundaries;
 /// avoids Swift 6 data-race warnings on captured `var`s.
 private final class MutableFlag: @unchecked Sendable {

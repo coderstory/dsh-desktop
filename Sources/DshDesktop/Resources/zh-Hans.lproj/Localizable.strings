@@ -16,21 +16,13 @@
 /* Preferences (Settings scene) */
 "Server" = "服务器";
 "Notifications" = "通知";
-"Polling" = "轮询";
-"Diagnostics" = "诊断";
-"Pause polling when window is hidden" = "窗口隐藏时暂停轮询";
-"Enable browser performance monitor" = "启用浏览器性能监控";
 "Port" = "端口";
 "Apply" = "应用";
 "Reset to Defaults" = "恢复默认";
-"How often DshDesktop checks the dsh UI for the busy/idle indicator." = "DshDesktop 检查 dsh 是否忙碌的频率。";
 "dsh listens on this port. Restart dsh (dsh menu) to apply." = "dsh 监听此端口。需重启 dsh（在 dsh 菜单）生效。";
-"Range: %ds – %ds. Default: %ds." = "范围：%ds – %ds。默认：%ds。";
 "TCP port" = "TCP 端口";
 "Show notification when dsh finishes" = "Agent 完成时显示通知";
 "A macOS banner appears when the dsh agent finishes its response." = "dsh Agent 完成响应时显示 macOS 横幅通知。";
-"Stops the DOM polling loop while the main window is closed. Resumes when you reopen." = "主窗口关闭时停止 DOM 轮询；重新打开时恢复。";
-"Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins." = "每 10 秒轮询 dsh 的 UI：长任务（>100 ms）、JS 堆用量、当前加载的插件列表。";
 
 /* System pane */
 "System" = "系统";
@@ -42,7 +34,6 @@
 /* About pane */
 "About" = "关于";
 "Native macOS wrapper for dsh --profile web" = "原生 macOS 包装器，启动 dsh --profile web";
-"Links" = "链接";
 "Credits" = "致谢";
 "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`." = "作为薄原生 SwiftUI 外壳，运行于 `@deepseek-ai/dsh` 之上。";
 

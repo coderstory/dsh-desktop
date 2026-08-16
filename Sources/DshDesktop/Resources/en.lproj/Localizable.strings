@@ -16,21 +16,13 @@
 /* Preferences (Settings scene) */
 "Server" = "Server";
 "Notifications" = "Notifications";
-"Polling" = "Polling";
-"Diagnostics" = "Diagnostics";
-"Pause polling when window is hidden" = "Pause polling when window is hidden";
-"Enable browser performance monitor" = "Enable browser performance monitor";
 "Port" = "Port";
 "Apply" = "Apply";
 "Reset to Defaults" = "Reset to Defaults";
-"How often DshDesktop checks the dsh UI for the busy/idle indicator." = "How often DshDesktop checks the dsh UI for the busy/idle indicator.";
 "dsh listens on this port. Restart dsh (dsh menu) to apply." = "dsh listens on this port. Restart dsh (dsh menu) to apply.";
-"Range: %ds – %ds. Default: %ds." = "Range: %ds – %ds. Default: %ds.";
 "TCP port" = "TCP port";
 "Show notification when dsh finishes" = "Show notification when dsh finishes";
 "A macOS banner appears when the dsh agent finishes its response." = "A macOS banner appears when the dsh agent finishes its response.";
-"Stops the DOM polling loop while the main window is closed. Resumes when you reopen." = "Stops the DOM polling loop while the main window is closed. Resumes when you reopen.";
-"Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins." = "Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins.";
 
 /* System pane */
 "System" = "System";
@@ -42,7 +34,6 @@
 /* About pane */
 "About" = "About";
 "Native macOS wrapper for dsh --profile web" = "Native macOS wrapper for dsh --profile web";
-"Links" = "Links";
 "Credits" = "Credits";
 "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`." = "Built as a thin native SwiftUI shell around `@deepseek-ai/dsh`.";
 

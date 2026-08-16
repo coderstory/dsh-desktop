@@ -93,7 +93,6 @@ struct DshApp: App {
     @StateObject private var idleWatcher: AgentIdleWatcher = {
         let prefs = Preferences.shared
         return AgentIdleWatcher(
-            pollInterval: prefs.pollingIntervalSeconds,
             evaluator: { false },
             isNotificationsEnabled: { prefs.notificationsEnabled }
         )
@@ -111,11 +110,6 @@ struct DshApp: App {
                     // (i.e. dsh died) and surface the FailedOverlay.
                     DshHealthMonitor.shared.attach(to: process)
                     DshHealthMonitor.shared.start()
-                }
-                // Hot-reload: when user changes polling interval in Settings,
-                // push the new value into the running watcher.
-                .onChange(of: prefs.pollingIntervalSeconds) { _, newValue in
-                    idleWatcher.pollInterval = newValue
                 }
         }
         .defaultSize(width: 1200, height: 800)
@@ -249,7 +243,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var idleWatcher: AgentIdleWatcher?
 
     private var statusItem: NSStatusItem?
-    private var performanceMenuItem: NSMenuItem?
 
     private static let mainWindowAutosaveName = "DshDesktop.MainWindow"
 
@@ -343,74 +336,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: String(localized: "Show dsh"), action: #selector(showWindow), keyEquivalent: ""))
-        if Preferences.shared.enablePerformanceMonitoring {
-            menu.addItem(.separator())
-            let perfItem = NSMenuItem(
-                title: "Performance: \(self.performanceSummary())",
-                action: #selector(showPerformance),
-                keyEquivalent: ""
-            )
-            perfItem.target = self
-            menu.addItem(perfItem)
-            performanceMenuItem = perfItem
-            // Live-update title on every sample. PerformanceMonitor is
-            // @MainActor; this assignment needs MainActor context.
-            let menuItemRef = perfItem
-            let summaryFn: @MainActor () -> String = { [weak self] in
-                self?.performanceSummary() ?? "—"
-            }
-            Task { @MainActor in
-                PerformanceMonitor.shared.onUpdate = {
-                    Task { @MainActor in
-                        menuItemRef.title = "Performance: \(summaryFn())"
-                    }
-                }
-            }
-        }
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: String(localized: "Quit"), action: #selector(quitApp), keyEquivalent: "q"))
         item.menu = menu
         statusItem = item
-    }
-
-    @MainActor
-    private func performanceSummary() -> String {
-        guard let stats = PerformanceMonitor.shared.lastStats else { return "no data yet" }
-        let mem = stats.memoryMB.map { "\($0)MB" } ?? "—"
-        return "\(stats.longTaskCount) long tasks · \(mem)"
-    }
-
-    @MainActor
-    @objc private func showPerformance() {
-        guard let stats = PerformanceMonitor.shared.lastStats else {
-            let alert = NSAlert()
-            alert.messageText = "Performance"
-            alert.informativeText = "No data sampled yet. PerformanceMonitor samples every 10 seconds — wait a moment, then check again."
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-            return
-        }
-        let mem = stats.memoryMB.map { "\($0) MB" } ?? "—"
-        let spike = stats.lastSpikeAt.map { "last long task at +\(Int($0 / 1000))s" } ?? "no long tasks"
-        let pluginList = stats.plugins.isEmpty ? "(none found in DOM)" : stats.plugins.joined(separator: "\n  • ")
-        let alert = NSAlert()
-        alert.messageText = "dsh Performance"
-        alert.informativeText = """
-        Long tasks (>100ms): \(stats.longTaskCount)
-        Cumulative duration: \(stats.longTaskTotalMs) ms
-        JS heap: \(mem)
-        Last spike: \(spike)
-
-        Active plugins (\(stats.pluginCount)):
-          • \(pluginList)
-
-        (WebKit's PerformanceLongTaskTiming doesn't expose the
-        `attribution` field, so we can't pinpoint the specific plugin
-        responsible — cross-reference the active list with the spike
-        timing to identify likely culprits.)
-        """
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
     }
 
     @objc private func showWindow() {
@@ -500,17 +429,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Log.ui.info("main window closed; app stays in menu bar")
         // Window hidden (LSUIElement style). App stays alive.
         // User reopens via menu bar icon's "Show dsh" item.
-        if Preferences.shared.pausePollingWhenHidden {
-            idleWatcher?.pause()
-        }
+        // Idle-watcher polling keeps running so the completion
+        // notification still fires while the window is closed.
     }
 
-    func windowDidBecomeKey(_ notification: Notification) {
-        // Resume the idle-watcher polling when the window comes back.
-        if Preferences.shared.pausePollingWhenHidden {
-            idleWatcher?.start()
-        }
-    }
+    func windowDidBecomeKey(_ notification: Notification) {}
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false

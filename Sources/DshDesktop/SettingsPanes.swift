@@ -8,7 +8,7 @@
 //  window chrome shows through (per macos-settings-ui skill).
 //
 //  State is bound to `Preferences.shared` so changes hot-reload into
-//  the running components (AgentIdleWatcher, PerformanceMonitor, etc.).
+//  the running components (AgentIdleWatcher, etc.).
 //
 
 import SwiftUI
@@ -49,45 +49,6 @@ struct GeneralSettingsPane: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "Show notification when dsh finishes"))
                         Text(String(localized: "A macOS banner appears when the dsh agent finishes its response."))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(.switch)
-            }
-
-            Section("Polling") {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 12) {
-                        Slider(value: $prefs.pollingIntervalSeconds,
-                               in: Preferences.pollingIntervalRange,
-                               step: 1)
-                            .frame(width: 220)
-                        Text("\(Int(prefs.pollingIntervalSeconds))s")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .frame(width: 36, alignment: .trailing)
-                    }
-                    Text(String(localized: "How often DshDesktop checks the dsh UI for the busy/idle indicator."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Toggle(isOn: $prefs.pausePollingWhenHidden) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(String(localized: "Pause polling when window is hidden"))
-                        Text(String(localized: "Stops the DOM polling loop while the main window is closed. Resumes when you reopen."))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(.switch)
-            }
-
-            Section("Diagnostics") {
-                Toggle(isOn: $prefs.enablePerformanceMonitoring) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(String(localized: "Enable browser performance monitor"))
-                        Text(String(localized: "Polls dsh's UI every 10s for long-running tasks (>100 ms), JS heap usage, and a list of currently-loaded plugins."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -181,11 +142,6 @@ struct AboutSettingsPane: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-            }
-
-            Section(String(localized: "Links")) {
-                // Removed per user request — the same URLs remain accessible
-                // from the Quick Links menu item.
             }
 
             Section(String(localized: "Credits")) {
