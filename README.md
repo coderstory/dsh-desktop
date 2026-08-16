@@ -4,6 +4,8 @@
 
 [![build & test](https://github.com/coderstory/dsh-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/coderstory/dsh-desktop/actions/workflows/build.yml)
 
+<img src="docs/main.png" alt="DshDesktop 主界面" width="900" />
+
 ## 功能
 
 - **原生窗口** — SwiftUI + `WKWebView`；原生 macOS 交通灯、拖动、缩放等。
