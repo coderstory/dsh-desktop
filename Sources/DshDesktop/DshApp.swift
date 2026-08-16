@@ -320,8 +320,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         let dropTitles: Set<String> = [
-            "Help", "Window", "View", "Format",
-            "帮助", "窗口", "显示", "视图", "格式",
+            "File", "Edit", "Help", "Window", "View", "Format",
+            "文件", "编辑", "帮助", "窗口", "显示", "视图", "格式",
         ]
         var keepGoing = true
         while keepGoing {
