@@ -109,7 +109,9 @@ public enum DshLocator {
             throw DshLocatorError.notInstalled
         }
         Log.dsh.info("located dsh at \(path)")
-        return Location(executablePath: path, arguments: ["dsh", "--profile", "web"])
+        // Use `dsh web` — simplest invocation. The user's local dsh
+        // build handles `web` as the web subcommand directly.
+        return Location(executablePath: path, arguments: ["dsh", "web"])
     }
 }
 
