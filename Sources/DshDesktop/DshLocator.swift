@@ -119,21 +119,35 @@ public enum DshLocator {
         //   dsh web --port 13080          fails with --profile required
         //   dsh --profile web --port 13080 boots web profile
         //
-        // argv padding: dsh's bin.js does `process.argv.slice(2)`,
-        // expecting argv to be [node_path, bin_js_path, ...user_args]
-        // when launched via shell shebang. Foundation's Process API
-        // does NOT prepend the executable to argv — it passes
-        // `arguments` verbatim. So we pad with 2 placeholders so
-        // slice(2) lands on the user args the same way as Terminal.
+        // Foundation's Process `arguments` becomes argv[1+] for the spawned
+        // process (Foundation does NOT prepend executableURL — verified
+        // empirically with /bin/echo). The kernel then invokes the
+        // shebang interpreter, so dsh's bin.js (Node) sees process.argv
+        // = [node, bin_js_path, ...Foundation arguments]. dsh does
+        // `process.argv.slice(2)`, which lands on Foundation `arguments`
+        // verbatim. So we pass ONLY the user args here.
+        //
+        // Earlier mistakes:
+        //   - ['dsh', '--profile', 'web'] → slice(2) = ['web', ...]
+        //     commander treats 'web' as program name, options.profile
+        //     is undefined, parent's check fires '--profile required'.
+        //   - ['x','x','dsh','--profile','web'] (2-padding) → slice(2)
+        //     = ['dsh','--profile',...] but commander's greedy
+        //     positional captures 'dsh' before '--profile' is parsed,
+        //     same '--profile required' failure.
+        //   - ['--profile','web'] (clean form) → slice(2) =
+        //     ['--profile','web',...]. commander parses '--profile'
+        //     as parent option, options.profile='web', parent's check
+        //     passes, web profile boots.
+        //
+        // Verified empirically: Foundation argv = ['--profile','web',
+        // '--port','13080'] → dsh web server starts on 13080.
+        // Foundation argv = ['dsh','--profile','web','--port','13080']
+        // → exit 1 with 'error: --profile <name> is required'.
         //
         // DshProcess appends `--port N` (and any plugin patch)
-        // afterward. Final argv: ['x', 'x', 'dsh', '--profile', 'web',
-        // '--port', 'N'] (7 elements); slice(2) =
-        // ['dsh', '--profile', 'web', '--port', 'N'] (5 elements).
-        // commander sees argv[0..1]='x','x' as program-name tokens,
-        // then parses '--profile' as parent option with value 'web'.
-        // options.profile = 'web', parent's check passes.
-        return Location(executablePath: path, arguments: ["x", "x", "dsh", "--profile", "web"])
+        // afterward.
+        return Location(executablePath: path, arguments: ["--profile", "web"])
     }
 }
 

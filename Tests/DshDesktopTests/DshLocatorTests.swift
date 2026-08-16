@@ -10,7 +10,7 @@ struct DshLocatorTests {
         let location = try DshLocator.locate()
         #expect(location.executablePath.hasSuffix("/dsh"))
         #expect(location.executablePath.hasPrefix("/"))
-        #expect(location.arguments == ["x", "x", "dsh", "--profile", "web"])
+        #expect(location.arguments == ["--profile", "web"])
     }
 
     @Test func locate_dshNotFound_throwsNotInstalled() {
