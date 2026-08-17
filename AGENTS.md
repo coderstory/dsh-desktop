@@ -83,6 +83,8 @@ Sources/DshDesktop/
 ├── DshLocator.swift          # 找 dsh binary（login shell fallback）
 ├── DshHealthMonitor.swift    # 15s 端口 liveness poll
 ├── HotkeyRouter.swift        # Cmd+C/V/X/A → WKWebView forwarder
+├── DSHBridge.swift           # unix domain socket server (RPC: notify, prefs.*) — pending
+├── DSHPluginDetector.swift   # cordis.yml/patch.yml inspection + auto-install/reenable
 ├── AgentIdleWatcher.swift    # DOM 轮询 + 状态机
 ├── LaunchAtLogin.swift       # SMAppService
 ├── LaunchConfig.swift        # CLI parser
@@ -197,6 +199,33 @@ Test:   ~0.7秒  (77 tests, 13 suites)
 Bundle: ~2秒
 Install: copy 操作
 ```
+
+## DSH Bridge Protocol（dsh 插件 ↔ wrapper IPC）
+
+Phase 1+：未来 wrapper 通过 unix domain socket 暴露少量 RPC 给 dsh 插件，
+让插件用 dsh driver 的权威 `agent/status` 事件触发原生通知，替代 wrapper
+之前那个不可靠的 DOM `data-streaming` 探针。
+
+**位置**：`~/Library/Application Support/ai.deepseek.dsh.desktop/bridge.sock`
+（macOS；Linux 暂未实现）。**协议版本**：`bridge-v1`，JSON-RPC 风格 + NDJSON。
+
+**当前 RPC 方法**：
+- `hello({protocol: 1})` → 客户端握手；不匹配版本即断
+- `notify({title, body})` → 弹原生通知
+- `prefs.get({key})` / `prefs.set({key, value})` → wrapper 持久化 prefs
+
+**判据**：插件监听 `agent/status` 事件（dsh driver 在 turn start/end 时广播
+`{ running: true|false }`），状态变 false 时调 `notify`。**严禁在 wrapper
+里继续读 DOM `data-streaming`**——那是"乱发"的根因。
+
+**插件存在性**：`DSHPluginDetector` 在每次 `DshApp.init()` 同步跑一次，五种
+状态（`.installedCurrent` / `.installedOutdated` / `.notInstalled` /
+`.disabled` / `.brokenPath`），分别有 NSAlert 反馈。用户也可通过
+控制 ▸ Check Bridge Plugin… 手动触发。`.notInstalled` 和 `.disabled` 时
+wrapper 自动写 patch（用户点 Install / Re-enable）。
+
+完整设计：`docs/superpowers/plans/2026-08-17-dsh-desktop-bridge.md`。
+插件 shell：`/Users/coderstory/CodeSource/plugins/dsh-desktop-bridge/`。
 
 ## 故障排查
 

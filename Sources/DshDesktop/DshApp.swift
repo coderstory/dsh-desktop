@@ -37,6 +37,19 @@ struct DshApp: App {
                 Self.showAlertAndExit(title: "dsh not found", message: error.localizedDescription)
             }
         }
+        // Detect dsh-desktop-bridge plugin status. We do this synchronously
+        // here so the user sees an actionable alert *before* the window
+        // opens if the plugin is missing / disabled / outdated — that way
+        // the dialog blocks the first-launch confusion rather than letting
+        // the wrapper silently fall back to its old (unreliable) DOM-probe
+        // notification path. The window is suppressed with .alert until
+        // the user dismisses, so the launch sequence stays predictable.
+        //
+        // Skip in --no-spawn mode: the bridge relies on a dsh process that
+        // owns the plugin, and if there's no dsh there's nothing to bridge
+        // to. Detection runs anyway (it's pure I/O), but the alert is
+        // suppressed so it doesn't pop up in headless / CI runs.
+        Self.checkBridgePluginAndAlertIfNeeded()
     }
 
     /// Detect an already-running instance of DshDesktop via NSRunningApplication.
@@ -66,6 +79,129 @@ struct DshApp: App {
         alert.addButton(withTitle: "Quit")
         alert.runModal()
         exit(1)
+    }
+
+    /// Run DSHPluginDetector against the user's dsh profile and surface an
+    /// NSAlert if the plugin needs user attention. Silent on success.
+    ///
+    /// Decision tree (see DSHPluginDetector.Status.State for the canonical
+    /// definitions):
+    ///
+    ///   - .installedCurrent          → no alert, continue
+    ///   - .notInstalled              → alert: "Install dsh-desktop-bridge"
+    ///   - .installedOutdated(...)    → alert: "Update dsh-desktop-bridge"
+    ///   - .disabled                  → alert: "Plugin disabled — re-enable"
+    ///   - .brokenPath(...)           → alert: "Plugin path missing"
+    ///
+    /// Skipped under --no-spawn / --help (the help case already exits; the
+    /// no-spawn case has no dsh to bridge to).
+    private static func checkBridgePluginAndAlertIfNeeded() {
+        if Self.launchConfig.help || Self.launchConfig.noSpawn { return }
+
+        let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
+            ?? NSHomeDirectory() + "/.dsh"
+        let status = DSHPluginDetector.detect(dshHome: dshHome)
+
+        // Always log the verdict so users can troubleshoot from
+        // `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
+        Log.pluginDetector.notice("bridge plugin detection verdict: \(String(describing: status.state), privacy: .public)")
+
+        switch status.state {
+        case .installedCurrent:
+            return // silent
+
+        case .notInstalled:
+            let alert = NSAlert()
+            alert.messageText = "Plugin not installed: \(DSHPluginDetector.pluginID)"
+            alert.informativeText = """
+                DshDesktop needs the dsh-desktop-bridge plugin to forward agent
+                completion events to native macOS notifications (the old DOM-probe
+                path was unreliable).
+
+                Plugin location:
+                \(DSHPluginDetector.defaultPluginPath)
+
+                Click "Install" to add the entry to your profile's
+                cordis.patch.yml, or "Skip" to continue without the bridge
+                (notifications will fall back to the old, unreliable path).
+                """
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "Install")
+            alert.addButton(withTitle: "Skip")
+            if alert.runModal() == .alertFirstButtonReturn {
+                let patchPath = Self.cordisPatchPath()
+                do {
+                    _ = try DSHPluginDetector.installPatchEntry(at: patchPath)
+                } catch {
+                    Log.pluginDetector.error("failed to install patch entry: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+
+        case .installedOutdated(let expected, let found):
+            let alert = NSAlert()
+            alert.messageText = "Plugin update available"
+            alert.informativeText = """
+                Installed: \(found)
+                Expected:  \(expected)
+
+                Run from the plugin directory:
+                  git pull && npm run build
+
+                Then restart DshDesktop.
+                """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+
+        case .disabled:
+            let alert = NSAlert()
+            alert.messageText = "Plugin disabled — appears to be a misconfiguration"
+            alert.informativeText = """
+                The dsh-desktop-bridge patch row has `disabled: true` in your
+                profile. This usually means a HOME-level patch or another plugin
+                manager overrode it.
+
+                Details:
+                \(status.details)
+
+                Click "Re-enable" to flip the flag back to enabled, or "Skip" to
+                continue without the bridge.
+                """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Re-enable")
+            alert.addButton(withTitle: "Skip")
+            if alert.runModal() == .alertFirstButtonReturn {
+                let patchPath = Self.cordisPatchPath()
+                do {
+                    _ = try DSHPluginDetector.reenablePatchEntry(at: patchPath)
+                } catch {
+                    Log.pluginDetector.error("failed to re-enable patch entry: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+
+        case .brokenPath(let path):
+            let alert = NSAlert()
+            alert.messageText = "Plugin file missing"
+            alert.informativeText = """
+                cordis.patch.yml points to:
+                \(path)
+
+                But that file does not exist. Either restore the plugin directory
+                or update the patch row's `main:` field.
+
+                Until fixed, DshDesktop will fall back to the old DOM-probe
+                notification path.
+                """
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: "OK")
+        }
+    }
+
+    /// Resolve the profile's `cordis.patch.yml` path from the same env vars
+    /// `DshProcess` uses (DSH_HOME first, then $HOME/.dsh).
+    private static func cordisPatchPath() -> String {
+        let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
+            ?? NSHomeDirectory() + "/.dsh"
+        return dshHome + "/profiles/web/cordis.patch.yml"
     }
 
     @StateObject private var process: DshProcess = {
@@ -199,6 +335,17 @@ struct DshApp: App {
 
                 Button("Save Diagnostic Report…") {
                     appDelegate.saveDiagnosticReport()
+                }
+
+                Divider()
+
+                // Manual plugin-status check. The auto-detection in
+                // DshApp.init() runs once at launch, but the user may
+                // want to re-check after editing cordis.patch.yml
+                // outside the wrapper, or after a botched dsh update
+                // wiped the patch entry.
+                Button("Check Bridge Plugin…") {
+                    Self.checkBridgePluginAndAlertIfNeeded()
                 }
             }
 

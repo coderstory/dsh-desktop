@@ -16,4 +16,6 @@ public enum Log {
     public static let ui       = Logger(subsystem: subsystem, category: "ui")
     public static let errors   = Logger(subsystem: subsystem, category: "errors")
     public static let menu     = Logger(subsystem: subsystem, category: "menu")
+    public static let pluginDetector = Logger(subsystem: subsystem, category: "plugin-detector")
+    public static let bridge   = Logger(subsystem: subsystem, category: "bridge")
 }
