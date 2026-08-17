@@ -55,6 +55,12 @@ public enum DSHPluginDetector {
             case notInstalled              // No patch row referencing our id anywhere.
             case disabled                  // Patch row present but `disabled: true` on a later layer.
             case brokenPath(expected: String) // Patch row references a path that no longer exists.
+            case duplicateEntry             // The plugin id appears in cordis.patch.yml AND
+                                          // the package is installed in node_modules — pnpm-style
+                                          // install would also inject the same id via the package's
+                                          // own cordis.patch.yml, leading to "duplicate loader entry
+                                          // id" on dsh boot. The wrapper must NOT re-write its own
+                                          // patch row in this state; the package-supplied row wins.
         }
 
         public let state: State
@@ -129,6 +135,23 @@ public enum DSHPluginDetector {
         }
 
         Log.pluginDetector.notice("plugin OK (v\(foundVersion, privacy: .public))")
+
+        // If a real package is also installed at node_modules/<id>/, the
+        // dsh loader will read the package's own cordis.patch.yml in
+        // addition to the profile's. We must NOT also have our own - insert
+        // row in the profile — that would give dsh two rows with the same
+        // id and fail boot with "duplicate loader entry id". Treat this
+        // as installed-current anyway (the package's row wins); the profile's
+        // - insert row (if any) is left alone, but detect()'s caller won't
+        // re-write it because installedCurrent is silent.
+        let profileDirString = dshHome + "/profiles/web"
+        if Self.isPackageInstalled(atProfileDir: profileDirString) {
+            return Status(
+                state: .installedCurrent,
+                details: "Installed as a real package in node_modules/ (the package's own cordis.patch.yml is loaded by dsh; the profile's - insert row is left as-is but won't be re-written)"
+            )
+        }
+
         return Status(
             state: .installedCurrent,
             details: "Installed at \(mainPath)"
@@ -326,9 +349,27 @@ public enum DSHPluginDetector {
     /// `true` if the file was written, `false` if the file already has our
     /// row (idempotent). Throws on I/O error.
     ///
+    /// **No-op when the plugin is installed as a real package in the
+    /// profile's `node_modules/`**: pnpm installs the package's own
+    /// `cordis.patch.yml` alongside, which already injects our plugin id.
+    /// Writing our own - insert row in the profile would then give dsh two
+    /// rows with the same id and fail boot with "duplicate loader entry
+    /// id". The package-supplied row wins; the wrapper leaves the profile
+    /// alone.
+    ///
     /// `path` is parameterised so tests can target a scratch file instead of
     /// the user's real `~/.dsh/profiles/web/cordis.patch.yml`.
     public static func installPatchEntry(at path: String) throws -> Bool {
+        // Defence-in-depth: if a real package is installed at
+        // `node_modules/<id>/` next to the profile's `cordis.patch.yml`,
+        // skip the write. The package's own cordis.patch.yml will inject
+        // our id. (We use the patch file's parent dir, not $DSH_HOME, so
+        // tests with a scratch profile dir get the right scope.)
+        let profileDir = URL(fileURLWithPath: path).deletingLastPathComponent().path
+        if Self.isPackageInstalled(atProfileDir: profileDir) {
+            Log.pluginDetector.notice("patch entry install skipped: package is installed at node_modules/\(self.pluginID, privacy: .public); its own cordis.patch.yml will inject the entry")
+            return false
+        }
         let snippet = """
             # 2026-08-17: DshDesktop-managed dsh-desktop-bridge entry.
             # Removing this row will silence agent completion notifications.
@@ -419,5 +460,20 @@ public enum DSHPluginDetector {
             Log.pluginDetector.error("no `disabled: true` row found in our block at \(path, privacy: .public)")
         }
         return changed
+    }
+
+    /// `true` if the plugin is installed as a real package in the
+    /// `<profileDir>/node_modules/`. When this is the case, pnpm has
+    /// symlinked the package (or hardlinked from the pnpm store), and
+    /// dsh's loader will read the package's own `cordis.patch.yml` —
+    /// which contains the same `- insert: { id, name, main, version }`
+    /// row. Writing the same row to the profile's `cordis.patch.yml`
+    /// would give dsh two rows with the same id, failing boot with
+    /// "duplicate loader entry id".
+    public static func isPackageInstalled(atProfileDir profileDir: String) -> Bool {
+        let dir = profileDir + "/node_modules/" + pluginID
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: dir, isDirectory: &isDir)
+        return exists && isDir.boolValue
     }
 }

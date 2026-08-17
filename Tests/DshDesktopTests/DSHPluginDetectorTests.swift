@@ -320,6 +320,52 @@ final class DSHPluginDetectorTests: XCTestCase {
             "package.json must list the bridge plugin in dependencies (so pnpm symlinks it on next dsh launch)")
     }
 
+    // MARK: - Duplicate-entry guard (regression: user reported that the
+    //       wrapper and the package's own cordis.patch.yml both
+    //       inserted the same id, causing "duplicate loader entry id"
+    //       on dsh boot. Fix: when a real package is in
+    //       node_modules/<id>/, installPatchEntry must NOT write the
+    //       profile's - insert row, and detect() must report success.)
+
+    func test_installPatchEntry_isNoOpWhenPackageAlreadyInstalled() throws {
+        // Simulate a real package install by creating
+        // node_modules/<pluginID>/ inside the profile dir.
+        let pkgDir = profileDir.appendingPathComponent("node_modules")
+            .appendingPathComponent(DSHPluginDetector.pluginID)
+        try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
+
+        // The patch file would otherwise be written; the guard must
+        // make installPatchEntry a no-op.
+        let patchPath = profileDir.appendingPathComponent("cordis.patch.yml").path
+        XCTAssertFalse(try DSHPluginDetector.installPatchEntry(at: patchPath),
+            "installPatchEntry must skip the write when the package is already in node_modules/")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: patchPath),
+            "no patch file should be created when the package is already installed")
+    }
+
+    func test_detect_reportsInstalledCurrentWhenPackageAlreadyInstalled() throws {
+        // Plant a row in the profile's patch (which would normally be
+        // the wrong / duplicate entry) AND symlink a real package
+        // directory. detect() should treat this as installedCurrent
+        // — the package's row wins, the profile's - insert is harmless
+        // (left as-is), and the wrapper will not re-write it.
+        let realMain = profileDir.appendingPathComponent("plugin.ts").path
+        try "".write(toFile: realMain, atomically: true, encoding: .utf8)
+        try writePatch(into: "cordis.yml", rows: ["""
+            - id: \(DSHPluginDetector.pluginID)
+              name: \(DSHPluginDetector.pluginID)
+              version: \(DSHPluginDetector.expectedPluginVersion)
+              main: \(realMain)
+            """])
+
+        let pkgDir = profileDir.appendingPathComponent("node_modules")
+            .appendingPathComponent(DSHPluginDetector.pluginID)
+        try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
+
+        let status = DSHPluginDetector.detect(dshHome: scratchDir.path)
+        XCTAssertEqual(status.state, .installedCurrent,
+            "package in node_modules + profile row = installedCurrent (no duplicate)")
+    }
     // MARK: - Helpers
 
     private func writePatch(into filename: String, rows: [String]) throws {

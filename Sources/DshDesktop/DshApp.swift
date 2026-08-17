@@ -162,8 +162,10 @@ struct DshApp: App {
         Log.pluginDetector.notice("bridge plugin detection verdict: \(String(describing: status.state), privacy: .public)")
 
         switch status.state {
-        case .installedCurrent:
-            return // silent
+        case .installedCurrent, .duplicateEntry:
+            return // silent — duplicateEntry means the package is already
+                   // installed and its own cordis.patch.yml injects the id;
+                   // the profile's leftover - insert row is harmless.
 
         case .notInstalled:
             let alert = NSAlert()
@@ -277,7 +279,12 @@ struct DshApp: App {
         Log.pluginDetector.notice("bridge plugin detection verdict (auto-install): \(String(describing: status.state), privacy: .public)")
 
         switch status.state {
-        case .installedCurrent, .disabled, .installedOutdated, .brokenPath:
+        case .installedCurrent, .disabled, .installedOutdated, .brokenPath, .duplicateEntry:
+            // duplicateEntry: the package is already in node_modules
+            // (its own cordis.patch.yml injects the id). installPatchEntry
+            // has its own package-installed guard (defence in depth) that
+            // skips the profile write to avoid the "duplicate loader
+            // entry id" boot failure. Nothing to do here.
             return // leave to the menu / user
 
         case .notInstalled:
