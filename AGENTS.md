@@ -225,23 +225,35 @@ Phase 1+：未来 wrapper 通过 unix domain socket 暴露少量 RPC 给 dsh 插
 - `notify({title, body})` → 弹原生通知
 - `prefs.get({key})` / `prefs.set({key, value})` → wrapper 持久化 prefs
 
-**判据**：插件监听 `agent/status` 事件（dsh driver 在 turn start/end 时广播
-`{ running: true|false }`），状态变 false 时调 `notify`。**严禁在 wrapper
-里继续读 DOM `data-streaming`**——那是"乱发"的根因。
+**判据**：插件监听 `agent/status` 事件（dsh driver 的
+`@deepseek-ai/dsh-agent-loop/lib/index.js` 在 turn 边界处 emit
+`{ status: 'idle' | 'running' }`），`busy → idle` 转换时调 `notify`。
+**严禁在 wrapper 里继续读 DOM `data-streaming`**——那是"乱发"的根因。
+payload 字段名是 `status`（字符串），不是 `running`（布尔）——这是从
+dsh 源码 grep 确认过的，之前子任务猜错过。
 
 **插件存在性**：`DSHPluginDetector` 在每次 `DshApp.init()` 同步跑一次，五种
 状态（`.installedCurrent` / `.installedOutdated` / `.notInstalled` /
-`.disabled` / `.brokenPath`），分别有 NSAlert 反馈。用户也可通过
-控制 ▸ Check Bridge Plugin… 手动触发。`.notInstalled` 和 `.disabled` 时
-wrapper 自动写 patch（用户点 Install / Re-enable）。
+`.disabled` / `.brokenPath`）。init() 路径只做**非阻塞**检测 +
+自动 install（仅对安全的 `.notInstalled`），不弹 alert——NSAlert.runModal()
+在 SwiftUI 早期启动 window race 时会卡住整个 launch sequence（已修，见
+下方 LaunchPathTests）。交互式 alert 仍保留，但**只**走控制菜单 ▸
+Check Bridge Plugin… 路径。`.notInstalled` / `.disabled` 时 wrapper
+自动写 patch（用户在 alert 里点 Install / Re-enable）。
+
+**Do not regress this**: `Tests/DshDesktopTests/LaunchPathTests.swift` 用文本
+guard 锁住"init() 不许引用 NSAlert / runModal / checkBridgePluginAndAlertIfNeeded"。
+如果未来要把 alert 加回 init()，先想清楚怎么安全地 post 到主 runloop（`DispatchQueue.main.async` + `RunLoop.main.perform` 之类）再改。
 
 完整设计：`docs/superpowers/plans/2026-08-17-dsh-desktop-bridge.md`。
-插件 shell：`/Users/coderstory/CodeSource/plugins/dsh-desktop-bridge/`。
+插件 shell：兄弟仓库 [dsh-plugins/dsh-desktop-bridge](https://github.com/coderstory/dsh-plugins/tree/main/dsh-desktop-bridge)，
+本仓库只通过 unix-domain socket 与之通信。
 
 ## 故障排查
 
 | 症状 | 原因 / 修复 |
 |---|---|
+| 通知乱发（在工具调用之间、状态抖动时弹通知）| 老的 DOM `data-streaming` 探针路径。装上 dsh-desktop-bridge 插件并启用（启动时 alert 点 Install，然后**手动重启 dsh**让 patch 生效）。详见 DSH Bridge Protocol 节。|
 | dsh 启动失败 "failed to read overlay ... cordis.patch.yml" | 用户的 dsline-chat 插件 cordis.patch.yml 被覆写为空 `[]`。修复：写入 README 里的正确内容 |
 | GUI app 找不到 dsh | DshLocator 用 login shell 查找；如果还失败，看 os.log 的 `dsh-desktop` subsystem |
 | 端口 3080 已占用 | wrapper 的 pre-check 应检测到并 releaseOwnership 复用 |
