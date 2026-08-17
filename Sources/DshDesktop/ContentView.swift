@@ -36,7 +36,17 @@ struct ContentView: View {
                     idleWatcher.reset()
                 }
             )
+            // Disable hit testing whenever the WebView is invisible. SwiftUI
+            // hit testing goes top-down through children, but NSViewRepresentable
+            // (WKWebView) integrates with AppKit's hit testing, and an NSView
+            // at opacity 0 still occupies the layout and can intercept clicks
+            // before SwiftUI gets a chance to deliver them to the overlay's
+            // Restart / Quit buttons — leaving them visually present but
+            // unresponsive. `allowsHitTesting(false)` makes the WebView
+            // transparent to clicks while still rendering, so the overlay
+            // (added after, on top) receives the events normally.
             .opacity(webReady ? 1 : 0)
+            .allowsHitTesting(webReady)
 
             if !overlayHidden {
                 overlay
