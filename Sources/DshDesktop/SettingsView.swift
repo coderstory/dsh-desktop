@@ -44,7 +44,14 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 @Observable
 final class SettingsNavigation {
     static let shared = SettingsNavigation()
-    var selectedTab: SettingsTab = .general
+    // Optional so SwiftUI's `List(selection:)` on macOS 27's
+    // NavigationSplitView sidebar renderer accepts the binding type
+    // strictly (the `Identifiable` row id is `SettingsTab`; `List`
+    // requires the selection binding to be `Binding<Optional<RowID>>`).
+    // The non-optional variant compiles on macOS 26 but renders an
+    // empty sidebar on macOS 27 — see `LaunchPathTests`-style
+    // regression we shipped in commit 5f6ca14.
+    var selectedTab: SettingsTab? = .general
     private init() {}
 }
 
@@ -74,7 +81,7 @@ struct SettingsView: View {
     @State private var isHistoryNavigation = false
 
     private var activeTab: SettingsTab {
-        navigation.selectedTab
+        navigation.selectedTab ?? .general
     }
 
     var body: some View {
@@ -118,7 +125,7 @@ struct SettingsView: View {
         guard canGoBack else { return }
         isHistoryNavigation = true
         historyIndex -= 1
-        navigation.selectedTab = navigationHistory[historyIndex]
+        navigation.selectedTab = navigationHistory[historyIndex] as SettingsTab?
         DispatchQueue.main.async { isHistoryNavigation = false }
     }
 
@@ -126,13 +133,15 @@ struct SettingsView: View {
         guard canGoForward else { return }
         isHistoryNavigation = true
         historyIndex += 1
-        navigation.selectedTab = navigationHistory[historyIndex]
+        navigation.selectedTab = navigationHistory[historyIndex] as SettingsTab?
         DispatchQueue.main.async { isHistoryNavigation = false }
     }
 
     private func recordNavigation() {
         guard !isHistoryNavigation else { return }
-        let tab = navigation.selectedTab
+        // `selectedTab` is `SettingsTab?` since the sidebar-renderer fix
+        // (see SettingsNavigation). Skip recording if no tab is selected.
+        guard let tab = navigation.selectedTab else { return }
         if navigationHistory.last == tab { return }
         if historyIndex < navigationHistory.count - 1 {
             navigationHistory = Array(navigationHistory.prefix(historyIndex + 1))
@@ -145,7 +154,7 @@ struct SettingsView: View {
 // MARK: - Sidebar
 
 private struct SettingsSidebarView: View {
-    @Binding var selectedTab: SettingsTab
+    @Binding var selectedTab: SettingsTab?
 
     var body: some View {
         List(selection: $selectedTab) {
