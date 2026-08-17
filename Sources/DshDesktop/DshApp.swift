@@ -49,7 +49,14 @@ struct DshApp: App {
         // owns the plugin, and if there's no dsh there's nothing to bridge
         // to. Detection runs anyway (it's pure I/O), but the alert is
         // suppressed so it doesn't pop up in headless / CI runs.
-        Self.checkBridgePluginAndAlertIfNeeded()
+        //
+        // CRITICAL: do NOT call checkBridgePluginAndAlertIfNeeded() here —
+        // NSAlert.runModal() in SwiftUI's early-startup window race freezes
+        // the launch. Use the non-blocking variant which auto-installs
+        // the missing-plugin patch and logs the verdict. The interactive
+        // alert variant is reserved for the "Check Bridge Plugin…" menu
+        // item which runs after the runloop is stable.
+        Self.detectAndAutoInstallBridgePlugin()
         // Start the unix-domain socket server so the dsh-desktop-bridge
         // plugin has a target to connect to. Failure is non-fatal: the
         // wrapper keeps running and falls back to the (unreliable) DOM-probe
@@ -141,14 +148,17 @@ struct DshApp: App {
     /// Skipped under --no-spawn / --help (the help case already exits; the
     /// no-spawn case has no dsh to bridge to).
     private static func checkBridgePluginAndAlertIfNeeded() {
+        // Interactive alert variant — only called from the "Check Bridge Plugin…"
+        // menu item, after the runloop is stable. NSAlert.runModal() in
+        // SwiftUI's early-startup window race freezes the launch sequence,
+        // so the launch-time detection uses detectAndAutoInstallBridgePlugin()
+        // (below) which never blocks the main thread.
         if Self.launchConfig.help || Self.launchConfig.noSpawn { return }
 
         let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
             ?? NSHomeDirectory() + "/.dsh"
         let status = DSHPluginDetector.detect(dshHome: dshHome)
 
-        // Always log the verdict so users can troubleshoot from
-        // `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`.
         Log.pluginDetector.notice("bridge plugin detection verdict: \(String(describing: status.state), privacy: .public)")
 
         switch status.state {
@@ -241,7 +251,46 @@ struct DshApp: App {
         }
     }
 
-    /// Resolve the profile's `cordis.patch.yml` path from the same env vars
+    /// Non-blocking variant of `checkBridgePluginAndAlertIfNeeded()` used
+    /// at `init()` time. NSAlert.runModal() in SwiftUI's early-startup
+    /// window race condition (the key window may not exist yet, the
+    /// alert's runloop integration is fragile) — and a stuck modal there
+    /// freezes the entire launch sequence. The "Check Bridge Plugin…"
+    /// menu item uses the alert variant (called after the runloop is
+    /// stable).
+    ///
+    /// For the launch-time path we:
+    ///   - log the verdict (so `log show` still surfaces it),
+    ///   - auto-install the patch for the safe `.notInstalled` case
+    ///     (writing a YAML snippet is non-destructive and idempotent —
+    ///     installPatchEntry checks for an existing entry first),
+    ///   - leave the other verdicts for the user to handle via the menu
+    ///     (a `.disabled` row probably means a deliberate user choice,
+    ///     and `.brokenPath` / `.installedOutdated` need the user's eyes).
+    private static func detectAndAutoInstallBridgePlugin() {
+        if Self.launchConfig.help || Self.launchConfig.noSpawn { return }
+
+        let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
+            ?? NSHomeDirectory() + "/.dsh"
+        let status = DSHPluginDetector.detect(dshHome: dshHome)
+
+        Log.pluginDetector.notice("bridge plugin detection verdict (auto-install): \(String(describing: status.state), privacy: .public)")
+
+        switch status.state {
+        case .installedCurrent, .disabled, .installedOutdated, .brokenPath:
+            return // leave to the menu / user
+
+        case .notInstalled:
+            do {
+                let wrote = try DSHPluginDetector.installPatchEntry(at: Self.cordisPatchPath())
+                Log.pluginDetector.notice("bridge plugin patch auto-installed (wroteNew=\(wrote, privacy: .public))")
+            } catch {
+                Log.pluginDetector.error("bridge plugin auto-install failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+        /// Resolve the profile's `cordis.patch.yml` path from the same env vars
     /// `DshProcess` uses (DSH_HOME first, then $HOME/.dsh).
     private static func cordisPatchPath() -> String {
         let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
