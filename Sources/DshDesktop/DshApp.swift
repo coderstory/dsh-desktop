@@ -50,6 +50,51 @@ struct DshApp: App {
         // to. Detection runs anyway (it's pure I/O), but the alert is
         // suppressed so it doesn't pop up in headless / CI runs.
         Self.checkBridgePluginAndAlertIfNeeded()
+        // Start the unix-domain socket server so the dsh-desktop-bridge
+        // plugin has a target to connect to. Failure is non-fatal: the
+        // wrapper keeps running and falls back to the (unreliable) DOM-probe
+        // notification path. We capture the bridge on a static so the
+        // AppDelegate can call stop() on it at applicationWillTerminate.
+        if Self.launchConfig.noSpawn {
+            Log.bridge.notice("DSHBridge: skipped in --no-spawn mode")
+        } else {
+            Self.startBridge()
+        }
+    }
+
+    /// Start the DSHBridge server. Singleton-ish (one bridge per wrapper
+    /// instance, since DshApp is a singleton by virtue of the single-
+    /// instance guard in `enforceSingleInstance`). Held statically so the
+    /// AppDelegate can reach it for clean shutdown.
+    nonisolated(unsafe) static var sharedBridge: DSHBridge?
+
+    private static func startBridge() {
+        let bridge = DSHBridge(
+            notifyHandler: { title, body in
+                await Notifications.notify(title: title, body: body)
+            },
+            prefsHandler: { key in
+                switch key {
+                case "notifications.enabled": return Preferences.shared.notificationsEnabled
+                default: return nil
+                }
+            },
+            prefsSetHandler: { key, value in
+                if key == "notifications.enabled", let b = value as? Bool {
+                    Preferences.shared.notificationsEnabled = b
+                }
+            }
+        )
+        do {
+            try bridge.start()
+            sharedBridge = bridge
+        } catch {
+            // Non-fatal: the wrapper keeps running. The user will see
+            // spammy notifications until they (a) install the plugin,
+            // and we surface that path via checkBridgePluginAndAlertIfNeeded.
+            Log.bridge.error("DSHBridge: failed to start — \(String(describing: error))")
+            sharedBridge = nil
+        }
     }
 
     /// Detect an already-running instance of DshDesktop via NSRunningApplication.
@@ -233,6 +278,13 @@ struct DshApp: App {
             isNotificationsEnabled: { prefs.notificationsEnabled }
         )
     }()
+
+    /// Unix-domain socket server the dsh-desktop-bridge plugin connects to.
+    /// Lives for the entire app lifetime. Not a `@StateObject` because
+    /// DSHBridge is `@unchecked Sendable` (its I/O runs on a serial
+    /// DispatchQueue; the wrapper code there is @MainActor-aware at the
+    /// handler boundary but not at the class level).
+    private var bridge: DSHBridge?
 
     var body: some Scene {
         Window("DshDesktop", id: "main") {
@@ -422,6 +474,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // on every change.
             Self.pruneAutoMenus()
             Self.armPruneObserver()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Stop the bridge server cleanly so the plugin gets onQuit and the
+        // socket file is unlinked. Best-effort: NSApp doesn't wait for
+        // async cleanup at terminate, so we block the run loop briefly
+        // (200 ms is the drain timeout inside DSHBridge.stop()).
+        if let bridge = DshApp.sharedBridge {
+            let semaphore = DispatchSemaphore(value: 0)
+            Task.detached {
+                await bridge.stop()
+                semaphore.signal()
+            }
+            _ = semaphore.wait(timeout: .now() + 1.0)
         }
     }
 
