@@ -151,10 +151,21 @@ idle → "乱发"）。
 
 ### Phase 4: 集成验证
 
-- 启动 wrapper，`log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"'`
-  看 bridge 启动日志
-- 在插件 `onLoad` 里 `await client.notify('Bridge', 'Hello from dsh')`，
-  应弹系统通知
+**macOS-friendly sandbox runner** at `dsh-plugins/dsh-desktop-bridge/test/sandbox/run.mjs`:
+spins up dsh + the plugin in an isolated `DSH_HOME` under `/tmp/`,
+polls the port, asserts the plugin loads. Inspired by
+[Sutera-Diffusus/dsh-sandbox-tester](https://github.com/Sutera-Diffusus/dsh-sandbox-tester)
+but stripped of the Windows-only `robocopy` / `PowerShell` /
+`Get-NetTCPConnection` layers. The sandbox caught two real integration
+bugs that the unit tests missed (see plugin repo's commit `fdd4ab0`).
+
+End-to-end manual check (requires user to actually launch the wrapper):
+  - `log show --predicate 'subsystem == "ai.deepseek.dsh.desktop"' --last 5m`
+    should show "DSHBridge: listening on …" on launch and the matching
+    `onQuit` line on quit
+  - In dsh, run a small task end-to-end; on completion the macOS
+    notification banner should appear (the bug that motivated the
+    whole rewrite)
 
 ## 风险与回滚
 
