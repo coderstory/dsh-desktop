@@ -44,7 +44,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 @Observable
 final class SettingsNavigation {
     static let shared = SettingsNavigation()
-    var selectedTab: SettingsTab? = .general
+    var selectedTab: SettingsTab = .general
     private init() {}
 }
 
@@ -61,13 +61,20 @@ private enum AppVersion {
 // MARK: - Root view
 
 struct SettingsView: View {
-    @State private var navigation = SettingsNavigation.shared
+    // `@Bindable` is the correct wrapper for an `@Observable` reference — it
+    // gives us `$navigation.selectedTab` for free, and SwiftUI's observation
+    // system tracks property mutations on the singleton directly. Using
+    // `@State` to wrap the singleton (the previous setup) compiled fine but
+    // shadowed the @Observable observation: the sidebar List's selection
+    // binding was attached to a stale snapshot, leaving rows unselected and
+    // — on macOS 27's NavigationSplitView sidebar renderer — visually blank.
+    @Bindable private var navigation = SettingsNavigation.shared
     @State private var navigationHistory: [SettingsTab] = [.general]
     @State private var historyIndex = 0
     @State private var isHistoryNavigation = false
 
     private var activeTab: SettingsTab {
-        navigation.selectedTab ?? .general
+        navigation.selectedTab
     }
 
     var body: some View {
@@ -125,7 +132,7 @@ struct SettingsView: View {
 
     private func recordNavigation() {
         guard !isHistoryNavigation else { return }
-        guard let tab = navigation.selectedTab else { return }
+        let tab = navigation.selectedTab
         if navigationHistory.last == tab { return }
         if historyIndex < navigationHistory.count - 1 {
             navigationHistory = Array(navigationHistory.prefix(historyIndex + 1))
@@ -138,13 +145,18 @@ struct SettingsView: View {
 // MARK: - Sidebar
 
 private struct SettingsSidebarView: View {
-    @Binding var selectedTab: SettingsTab?
+    @Binding var selectedTab: SettingsTab
 
     var body: some View {
         List(selection: $selectedTab) {
+            // No explicit `.tag(tab)` — `Identifiable` conformance already
+            // tags each row by `tab.id` (== `tab` itself). The redundant
+            // `.tag(tab)` was harmless on its own, but together with the
+            // optional Binding<SettingsTab?> + non-optional tag mismatch
+            // it pushed the sidebar List into a state where row bodies
+            // weren't being laid out on macOS 27's NavigationSplitView.
             ForEach(SettingsTab.allCases) { tab in
                 SettingsSidebarRow(tab: tab)
-                    .tag(tab)
             }
             SettingsSidebarFooter()
         }
