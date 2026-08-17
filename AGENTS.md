@@ -34,6 +34,17 @@ Web UI (`dsh web`) 装进一个 `WKWebView`。macOS 13+ → 25+，Swift 6 严格
    `[]`（空数组）导致 dsh 启动失败。我们用 README 里的正确内容覆盖
    修复了。如果再次看到 dsh 启动失败 "failed to read overlay ... dsline-chat/cordis.patch.yml"，
    那是又被覆写了。
+4. **禁止使用 subagent_fork 做代码/测试/文档写入** — subagent 适合
+   只读调研（grep、读源码、查文档、查 git log）；动手活（写代码、跑
+   build/test、commit、改 plan、改 AGENTS.md）必须在主对话里直接做。
+   理由：subagent 的中间步骤不透明，review 难度高；多次来回 subagent
+   会让上下文分裂，难以保持单一真理源。
+   - **额外约束**：禁止把当前会话内容作为子任务的 prompt 来源。
+     `subagent_fork` 会把"当前已完成的所有 turn"作为种子上下文传给
+     子任务，意味着子任务能看见我们正在讨论的设计、bug、计划——这违反
+     "上下文来源显式、可审计"的原则。任何发给 subagent 的任务描述
+     **必须自包含**：列出文件路径、列出预期行为、列出成功条件；不要让
+     子任务去"理解上下文"或"接着我们的思路做"。
 
 ## 用户当前的环境
 
