@@ -281,9 +281,17 @@ struct DshApp: App {
             return // leave to the menu / user
 
         case .notInstalled:
+            // cordis.patch.yml is the half of the install that tells
+            // dsh *which* plugins to instantiate; the package.json
+            // `dependencies` entry is the OTHER half — without it,
+            // pnpm won't materialise node_modules/<plugin>/, and the
+            // - insert's `main:` path resolves to nothing on dsh boot.
+            // Both writes are idempotent and non-destructive.
             do {
-                let wrote = try DSHPluginDetector.installPatchEntry(at: Self.cordisPatchPath())
-                Log.pluginDetector.notice("bridge plugin patch auto-installed (wroteNew=\(wrote, privacy: .public))")
+                let wrotePatch = try DSHPluginDetector.installPatchEntry(at: Self.cordisPatchPath())
+                Log.pluginDetector.notice("bridge plugin patch auto-installed (wroteNew=\(wrotePatch, privacy: .public))")
+                let wroteDep = try DSHPluginDetector.installPackageDependency(at: Self.profileDir())
+                Log.pluginDetector.notice("bridge plugin package.json dep auto-installed (wroteNew=\(wroteDep, privacy: .public))")
             } catch {
                 Log.pluginDetector.error("bridge plugin auto-install failed: \(error.localizedDescription, privacy: .public)")
             }
@@ -296,6 +304,14 @@ struct DshApp: App {
         let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
             ?? NSHomeDirectory() + "/.dsh"
         return dshHome + "/profiles/web/cordis.patch.yml"
+    }
+
+    /// Resolve the profile's directory (the one containing package.json
+    /// and cordis.patch.yml). Same env-var convention as cordisPatchPath.
+    private static func profileDir() -> String {
+        let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"]
+            ?? NSHomeDirectory() + "/.dsh"
+        return dshHome + "/profiles/web"
     }
 
     @StateObject private var process: DshProcess = {

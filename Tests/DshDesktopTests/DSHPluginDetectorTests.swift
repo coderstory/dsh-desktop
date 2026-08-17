@@ -193,6 +193,133 @@ final class DSHPluginDetectorTests: XCTestCase {
         XCTAssertTrue(result.contains("- id: \(DSHPluginDetector.pluginID)"), "our row added")
     }
 
+    // MARK: - installPackageDependency (the OTHER half of the install —
+    //       cordis.patch.yml tells dsh *which* plugins to instantiate,
+    //       package.json `dependencies` is what pnpm reads to actually
+    //       symlink the plugin into node_modules so dsh can resolve its
+    //       `main:` path. Both are required. Without this half, the
+    //       - insert row in cordis.patch.yml points at a non-existent
+    //       node_modules/<plugin>/, and dsh either auto-prunes the
+    //       broken row or fails to load the plugin silently.)
+
+    func test_installPackageDependency_addsLinkEntry() throws {
+        let pkgPath = profileDir.appendingPathComponent("package.json").path
+        // Seed a minimal package.json with NO bridge entry.
+        try """
+            {
+              "name": "dsh-profile-web-test",
+              "private": true,
+              "dependencies": {}
+            }
+            """.write(toFile: pkgPath, atomically: true, encoding: .utf8)
+
+        XCTAssertTrue(try DSHPluginDetector.installPackageDependency(at: profileDir.path))
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: pkgPath))
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let deps = try XCTUnwrap(obj["dependencies"] as? [String: Any])
+        XCTAssertEqual(deps[DSHPluginDetector.pluginID] as? String, DSHPluginDetector.defaultPackageLink)
+    }
+
+    func test_installPackageDependency_isIdempotent() throws {
+        let pkgPath = profileDir.appendingPathComponent("package.json").path
+        try """
+            {
+              "name": "dsh-profile-web-test",
+              "private": true,
+              "dependencies": {}
+            }
+            """.write(toFile: pkgPath, atomically: true, encoding: .utf8)
+
+        XCTAssertTrue(try DSHPluginDetector.installPackageDependency(at: profileDir.path))
+        // Second call: same value already present, no-op.
+        XCTAssertFalse(try DSHPluginDetector.installPackageDependency(at: profileDir.path))
+    }
+
+    func test_installPackageDependency_doesNotClobberUserCustomisedValue() throws {
+        let pkgPath = profileDir.appendingPathComponent("package.json").path
+        try """
+            {
+              "name": "dsh-profile-web-test",
+              "private": true,
+              "dependencies": {
+                "\(DSHPluginDetector.pluginID)": "link:/some/other/path"
+              }
+            }
+            """.write(toFile: pkgPath, atomically: true, encoding: .utf8)
+
+        // User has a different path; we leave it alone.
+        XCTAssertFalse(try DSHPluginDetector.installPackageDependency(at: profileDir.path))
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: pkgPath))
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let deps = try XCTUnwrap(obj["dependencies"] as? [String: Any])
+        XCTAssertEqual(deps[DSHPluginDetector.pluginID] as? String, "link:/some/other/path",
+            "user's customised dependency value must not be clobbered")
+    }
+
+    func test_installPackageDependency_preservesOtherDependencies() throws {
+        let pkgPath = profileDir.appendingPathComponent("package.json").path
+        try """
+            {
+              "name": "dsh-profile-web-test",
+              "private": true,
+              "dependencies": {
+                "another-plugin": "1.2.3",
+                "aegis": "git+https://example.com/aegis.git"
+              }
+            }
+            """.write(toFile: pkgPath, atomically: true, encoding: .utf8)
+
+        _ = try DSHPluginDetector.installPackageDependency(at: profileDir.path)
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: pkgPath))
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let deps = try XCTUnwrap(obj["dependencies"] as? [String: Any])
+        XCTAssertEqual(deps["another-plugin"] as? String, "1.2.3",
+            "existing dependency must be preserved")
+        XCTAssertEqual(deps["aegis"] as? String, "git+https://example.com/aegis.git",
+            "existing dependency must be preserved")
+        XCTAssertEqual(deps[DSHPluginDetector.pluginID] as? String, DSHPluginDetector.defaultPackageLink)
+    }
+
+    // MARK: - Launch-time install does BOTH writes (patch + dep). This is
+    //       the regression test for the user's report that 'the plugin
+    //       isn't actually fully installed' — the patch alone isn't
+    //       enough; without the package.json dep, pnpm won't materialise
+    //       node_modules/<plugin>/ and dsh either silently drops the
+    //       - insert or fails to load the plugin at runtime.
+
+    func test_launchInstall_writesBothPatchAndPackageDep() throws {
+        // Seed a profile with NOTHING in cordis.patch.yml about the bridge
+        // plugin and NOTHING in package.json dependencies either.
+        let pkgPath = profileDir.appendingPathComponent("package.json").path
+        try """
+            {
+              "name": "dsh-profile-web-test",
+              "private": true,
+              "dependencies": {}
+            }
+            """.write(toFile: pkgPath, atomically: true, encoding: .utf8)
+
+        // Simulate what the wrapper's detectAndAutoInstallBridgePlugin
+        // does: installPatchEntry + installPackageDependency.
+        let patchPath = profileDir.appendingPathComponent("cordis.patch.yml").path
+        _ = try DSHPluginDetector.installPatchEntry(at: patchPath)
+        _ = try DSHPluginDetector.installPackageDependency(at: profileDir.path)
+
+        // Both writes should have happened.
+        let patch = try String(contentsOfFile: patchPath, encoding: .utf8)
+        XCTAssertTrue(patch.contains("- id: \(DSHPluginDetector.pluginID)"),
+            "patch.yml must contain the bridge - insert row")
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: pkgPath))
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let deps = try XCTUnwrap(obj["dependencies"] as? [String: Any])
+        XCTAssertEqual(deps[DSHPluginDetector.pluginID] as? String, DSHPluginDetector.defaultPackageLink,
+            "package.json must list the bridge plugin in dependencies (so pnpm symlinks it on next dsh launch)")
+    }
+
     // MARK: - Helpers
 
     private func writePatch(into filename: String, rows: [String]) throws {

@@ -38,6 +38,14 @@ public enum DSHPluginDetector {
     /// relocate the plugins repo.
     public static let defaultPluginPath = "/Users/coderstory/CodeSource/plugins/dsh-desktop-bridge/src/index.ts"
 
+    /// npm `link:` value the wrapper writes into the profile's
+    /// `package.json` `dependencies`. `link:` is preferred over `file:`
+    /// because pnpm will symlink rather than copy — the plugin's `node_modules`
+    /// (e.g. `@deepseek-ai/cordis`) stay in its real tree and don't get
+    /// re-resolved against the profile's flat fallback. See:
+    ///   https://pnpm.io/cli/install#--link-bare
+    public static let defaultPackageLink = "link:" + defaultPluginPath
+
     /// Result of one detection pass. `state` is the actionable verdict;
     /// `details` carries context for logs / alerts.
     public struct Status: Equatable {
@@ -338,6 +346,49 @@ public enum DSHPluginDetector {
         }
         try (existing + "\n" + snippet).write(toFile: path, atomically: true, encoding: .utf8)
         Log.pluginDetector.notice("patch entry appended to \(path, privacy: .public)")
+        return true
+    }
+
+    /// Add the plugin to the profile's `package.json` `dependencies` as a
+    /// `link:` entry, so pnpm symlinks the plugin into the profile's
+    /// `node_modules` on the next `pnpm install`. Returns `true` if the
+    /// dependency was added, `false` if it was already present.
+    ///
+    /// **Why both this and `installPatchEntry`?** cordis.patch.yml's
+    /// `- insert` row only tells dsh to *instantiate* a plugin by id
+    /// — dsh still needs the plugin to be Node-resolvable, which means
+    /// it must exist in the profile's `node_modules/dsh-desktop-bridge/`.
+    /// pnpm only puts it there if `dependencies` lists it. The two
+    /// writes are idempotent and can be retried independently.
+    public static func installPackageDependency(at profileDir: String) throws -> Bool {
+        let pkgPath = profileDir + "/package.json"
+        let url = URL(fileURLWithPath: pkgPath)
+        let data = try Data(contentsOf: url)
+        guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "DSHPluginDetector", code: 10,
+                          userInfo: [NSLocalizedDescriptionKey: "package.json is not an object"])
+        }
+        var deps = json["dependencies"] as? [String: Any] ?? [:]
+        if let existing = deps[pluginID] as? String, existing == defaultPackageLink {
+            Log.pluginDetector.notice("dependency \(self.pluginID, privacy: .public) already in package.json — leaving as-is")
+            return false
+        }
+        if deps[pluginID] != nil {
+            // Present but with a different value (e.g. a different path).
+            // Don't clobber a user-customised value; surface a warning.
+            Log.pluginDetector.notice("dependency \(self.pluginID, privacy: .public) in package.json has unexpected value '\(deps[pluginID] as? String ?? "<non-string>", privacy: .public)' — leaving as-is; the wrapper cannot resolve it correctly. Edit \(pkgPath, privacy: .public) manually.")
+            return false
+        }
+        deps[pluginID] = defaultPackageLink
+        json["dependencies"] = deps
+        // Use .sortedKeys for diffability (the user will eventually diff
+        // this file via git or similar).
+        let newData = try JSONSerialization.data(
+            withJSONObject: json,
+            options: [.sortedKeys, .prettyPrinted]
+        )
+        try newData.write(to: url, options: .atomic)
+        Log.pluginDetector.notice("dependency \(self.pluginID, privacy: .public) added to \(pkgPath, privacy: .public) (link: symlink — pnpm install will materialise node_modules on next dsh launch)")
         return true
     }
 
